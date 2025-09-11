@@ -1,6 +1,7 @@
 package batchexecute
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -403,6 +404,10 @@ func (c *Client) Execute(rpcs []RPC) (*Response, error) {
 
 // decodeResponse decodes the batchexecute response
 func decodeResponse(raw string) ([]Response, error) {
+	return decodeResponseWithOptions(raw, true)
+}
+
+func decodeResponseWithOptions(raw string, allowChunked bool) ([]Response, error) {
 	raw = strings.TrimSpace(strings.TrimPrefix(raw, ")]}'"))
 	if raw == "" {
 		return nil, fmt.Errorf("empty response after trimming prefix")
@@ -412,18 +417,16 @@ func decodeResponse(raw string) ([]Response, error) {
 	raw = sanitizeJSON(raw)
 
 	// Try to parse as a chunked response first
-	if isDigit(rune(raw[0])) {
+	if allowChunked && isDigit(rune(raw[0])) {
 		reader := strings.NewReader(raw)
 		return decodeChunkedResponse(reader)
 	}
 
-	// Try to parse as a regular response
-	var responses [][]interface{}
-	if err := json.NewDecoder(strings.NewReader(raw)).Decode(&responses); err != nil {
+	var decoded interface{}
+	if err := json.NewDecoder(strings.NewReader(raw)).Decode(&decoded); err != nil {
 		// Check if this might be a numeric response (happens with API errors)
 		trimmedRaw := strings.TrimSpace(raw)
 		if code, parseErr := strconv.Atoi(trimmedRaw); parseErr == nil {
-			// This is a numeric response, potentially an error code
 			return []Response{
 				{
 					ID:   "numeric",
@@ -435,15 +438,19 @@ func decodeResponse(raw string) ([]Response, error) {
 		// Try to parse as a single array
 		var singleArray []interface{}
 		if err := json.NewDecoder(strings.NewReader(raw)).Decode(&singleArray); err == nil {
-			// Convert it to our expected format
-			responses = [][]interface{}{singleArray}
+			decoded = []interface{}{singleArray}
 		} else {
 			return nil, fmt.Errorf("decode response: %w", err)
 		}
 	}
 
+	responseArray, err := normalizeResponseArray(decoded)
+	if err != nil {
+		return nil, err
+	}
+
 	var result []Response
-	for _, rpcData := range responses {
+	for _, rpcData := range responseArray {
 		if len(rpcData) < 7 {
 			continue
 		}
@@ -484,6 +491,10 @@ func decodeResponse(raw string) ([]Response, error) {
 			}
 		}
 
+		if resp.Data != nil {
+			resp.Data = normalizeResponseData(resp.Data)
+		}
+
 		if rpcData[6] == "generic" {
 			resp.Index = 0
 		} else if indexStr, ok := rpcData[6].(string); ok {
@@ -502,11 +513,238 @@ func decodeResponse(raw string) ([]Response, error) {
 
 // decodeChunkedResponse decodes the batchexecute response
 func decodeChunkedResponse(r io.Reader) ([]Response, error) {
-	return parseChunkedResponse(r)
+	rawBytes, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("read chunked response: %w", err)
+	}
+
+	raw := strings.TrimSpace(strings.TrimPrefix(string(rawBytes), ")]}'"))
+	if raw == "" {
+		return nil, fmt.Errorf("no valid responses found")
+	}
+
+	trimmed := strings.TrimSpace(raw)
+	if trimmed != "" && !strings.Contains(trimmed, "\n") && isNumericString(trimmed) {
+		return []Response{
+			{
+				ID:   "numeric",
+				Data: json.RawMessage(trimmed),
+			},
+		}, nil
+	}
+
+	var (
+		responses  []Response
+		bestEffort bool
+		reader     = bufio.NewReader(strings.NewReader(raw))
+	)
+
+	for {
+		lengthLine, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			bestEffort = true
+			break
+		}
+
+		lengthStr := strings.TrimSpace(lengthLine)
+		if lengthStr == "" {
+			continue
+		}
+
+		totalLength, err := strconv.Atoi(lengthStr)
+		if err != nil {
+			bestEffort = true
+			rest, _ := io.ReadAll(reader)
+			fallback := strings.TrimSpace(lengthStr + "\n" + string(rest))
+			if fallback != "" {
+				if fallbackResponses, ferr := decodeResponseWithOptions(fallback, false); ferr == nil {
+					responses = append(responses, fallbackResponses...)
+				}
+			}
+			break
+		}
+
+		chunk := make([]byte, totalLength)
+		n, err := io.ReadFull(reader, chunk)
+		if err != nil {
+			bestEffort = true
+			chunk = chunk[:n]
+		}
+
+		chunk = completeChunk(reader, chunk)
+		if len(chunk) == 0 {
+			continue
+		}
+
+		var rpcBatch [][]interface{}
+		if err := json.Unmarshal(chunk, &rpcBatch); err != nil {
+			bestEffort = true
+			continue
+		}
+
+		for _, rpcData := range rpcBatch {
+			if len(rpcData) < 7 {
+				continue
+			}
+			rpcType, ok := rpcData[0].(string)
+			if !ok || rpcType != "wrb.fr" {
+				continue
+			}
+
+			id, _ := rpcData[1].(string)
+			resp := Response{
+				ID: id,
+			}
+
+			if rpcData[2] != nil {
+				switch data := rpcData[2].(type) {
+				case string:
+					resp.Data = json.RawMessage(data)
+				default:
+					if dataBytes, err := json.Marshal(data); err == nil {
+						resp.Data = json.RawMessage(dataBytes)
+					}
+				}
+			} else {
+				resp.Data = json.RawMessage("[]")
+			}
+
+			if resp.Data != nil {
+				resp.Data = normalizeResponseData(resp.Data)
+			}
+
+			if rpcData[6] == "generic" {
+				resp.Index = 0
+			} else if indexStr, ok := rpcData[6].(string); ok {
+				resp.Index, _ = strconv.Atoi(indexStr)
+			}
+
+			responses = append(responses, resp)
+		}
+	}
+
+	if len(responses) == 0 {
+		if bestEffort {
+			return responses, nil
+		}
+		return nil, fmt.Errorf("no valid responses found")
+	}
+
+	return responses, nil
+}
+
+func completeChunk(reader *bufio.Reader, chunk []byte) []byte {
+	if len(chunk) == 0 {
+		return chunk
+	}
+
+	var testBatch [][]interface{}
+	if err := json.Unmarshal(chunk, &testBatch); err == nil {
+		return chunk
+	}
+
+	extraData := make([]byte, 0)
+	buf := make([]byte, 1024)
+
+	for attempts := 0; attempts < 10; attempts++ {
+		n, err := reader.Read(buf)
+		if err == io.EOF || err != nil || n == 0 {
+			break
+		}
+		extraData = append(extraData, buf[:n]...)
+
+		fullChunk := append(chunk, extraData...)
+		if err := json.Unmarshal(fullChunk, &testBatch); err == nil {
+			return fullChunk
+		}
+	}
+
+	if len(extraData) == 0 {
+		return chunk
+	}
+
+	fullData := append(chunk, extraData...)
+	decoder := json.NewDecoder(strings.NewReader(string(fullData)))
+	var firstJSON [][]interface{}
+	if err := decoder.Decode(&firstJSON); err == nil {
+		consumed := decoder.InputOffset()
+		return fullData[:consumed]
+	}
+
+	return fullData
 }
 
 func isDigit(c rune) bool {
 	return c >= '0' && c <= '9'
+}
+
+func isNumericString(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizeResponseArray(decoded interface{}) ([][]interface{}, error) {
+	if respSlice, ok := decoded.([]interface{}); ok {
+		if len(respSlice) == 1 {
+			if num, ok := respSlice[0].(float64); ok {
+				return nil, fmt.Errorf("unexpected numeric array response: %v", num)
+			}
+		}
+		if len(respSlice) > 0 {
+			if _, ok := respSlice[0].(string); ok {
+				return [][]interface{}{respSlice}, nil
+			}
+		}
+
+		var responseArray [][]interface{}
+		for _, item := range respSlice {
+			if itemSlice, ok := item.([]interface{}); ok {
+				responseArray = append(responseArray, itemSlice)
+			}
+		}
+		if len(responseArray) == 0 {
+			return nil, fmt.Errorf("no valid responses found")
+		}
+		return responseArray, nil
+	}
+
+	return nil, fmt.Errorf("unexpected response format: %T", decoded)
+}
+
+func normalizeResponseData(raw json.RawMessage) json.RawMessage {
+	if len(raw) == 0 {
+		return raw
+	}
+
+	var decoded interface{}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return raw
+	}
+
+	items, ok := decoded.([]interface{})
+	if !ok || len(items) != 1 {
+		return raw
+	}
+
+	if _, ok := items[0].(map[string]interface{}); !ok {
+		return raw
+	}
+
+	if dataBytes, err := json.Marshal(items[0]); err == nil {
+		return dataBytes
+	}
+
+	return raw
 }
 
 func min(a, b int) int {
