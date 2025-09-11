@@ -546,7 +546,6 @@ func run() error {
 			fmt.Fprintf(os.Stderr, "DEBUG: HTTP recording enabled with directory: %s\n", recordingDir)
 		}
 	}
-
 	for i := 0; i < 3; i++ {
 		if i > 0 {
 			if i == 1 {
@@ -555,6 +554,8 @@ func run() error {
 				fmt.Fprintln(os.Stderr, "nlm: retrying authentication...")
 			}
 			debug = true
+			// Update opts to include debug when retrying auth
+			opts = []batchexecute.Option{batchexecute.WithDebug(true)}
 		}
 
 		client := api.New(authToken, cookies, opts...)
