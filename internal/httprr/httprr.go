@@ -238,7 +238,7 @@ func create(file string, rt http.RoundTripper) (*RecordReplay, error) {
 	// Each round-trip will write a new request-response record.
 	if _, err := fmt.Fprintf(f, "httprr trace v1\n"); err != nil {
 		// unreachable unless write error immediately after os.Create
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 	rr := &RecordReplay{
@@ -263,13 +263,17 @@ func open(file string, rt http.RoundTripper) (*RecordReplay, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
+		defer func() {
+			_ = f.Close()
+		}()
 
 		gz, err := gzip.NewReader(f)
 		if err != nil {
 			return nil, err
 		}
-		defer gz.Close()
+		defer func() {
+			_ = gz.Close()
+		}()
 
 		bdata, err = io.ReadAll(gz)
 		if err != nil {
@@ -420,7 +424,7 @@ func (rr *RecordReplay) reqWire(req *http.Request) (string, error) {
 	// Read the original body
 	if req.Body != nil {
 		body, err := io.ReadAll(req.Body)
-		req.Body.Close()
+		_ = req.Body.Close()
 		if err != nil {
 			return "", err
 		}
@@ -457,7 +461,7 @@ func (rr *RecordReplay) respWire(resp *http.Response) (string, error) {
 	var err error
 	if resp.Body != nil {
 		bodyBytes, err = io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			return "", err
 		}
@@ -480,7 +484,7 @@ func (rr *RecordReplay) respWire(resp *http.Response) (string, error) {
 
 	// Close the copy's body since we're done with it
 	if respCopy.Body != nil {
-		respCopy.Body.Close()
+		_ = respCopy.Body.Close()
 	}
 
 	// Apply scrubbers to the serialized data
@@ -579,7 +583,11 @@ func OpenForTest(t *testing.T, rt http.RoundTripper) (*RecordReplay, error) {
 			return nil, fmt.Errorf("httprr: failed to open recording file %s: %w", filename, err)
 		}
 		rr.logger = logger
-		t.Cleanup(func() { rr.Close() })
+		t.Cleanup(func() {
+			if err := rr.Close(); err != nil {
+				t.Logf("httprr: failed to close recording: %v", err)
+			}
+		})
 		return rr, nil
 	}
 

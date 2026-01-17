@@ -13,13 +13,17 @@ func TestOpenForTest(t *testing.T) {
 	// Clean up any existing test files
 	testDataDir := "testdata"
 	testFile := filepath.Join(testDataDir, "TestOpenForTest.httprr")
-	os.RemoveAll(testDataDir)
+	if err := os.RemoveAll(testDataDir); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message": "test response"}`))
+		if _, err := w.Write([]byte(`{"message": "test response"}`)); err != nil {
+			t.Errorf("failed to write response body: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -42,7 +46,11 @@ func TestOpenForTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rr.Close()
+	defer func() {
+		if err := rr.Close(); err != nil {
+			t.Errorf("failed to close httprr: %v", err)
+		}
+	}()
 
 	if rr.Recording() {
 		t.Error("Expected replay mode, got recording mode")
@@ -55,7 +63,9 @@ func TestOpenForTest(t *testing.T) {
 	}
 
 	// Clean up
-	os.RemoveAll(testDataDir)
+	if err := os.RemoveAll(testDataDir); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestSkipIfNoCredentialsOrRecording(t *testing.T) {
@@ -66,20 +76,28 @@ func TestSkipIfNoCredentialsOrRecording(t *testing.T) {
 	originalEnv := os.Getenv(testEnvVar)
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv(testEnvVar, originalEnv)
+			if err := os.Setenv(testEnvVar, originalEnv); err != nil {
+				t.Fatalf("failed to restore %s: %v", testEnvVar, err)
+			}
 		} else {
-			os.Unsetenv(testEnvVar)
+			if err := os.Unsetenv(testEnvVar); err != nil {
+				t.Fatalf("failed to unset %s: %v", testEnvVar, err)
+			}
 		}
 	}()
 
 	// Test when env var is not set
-	os.Unsetenv(testEnvVar)
+	if err := os.Unsetenv(testEnvVar); err != nil {
+		t.Fatalf("failed to unset %s: %v", testEnvVar, err)
+	}
 	if hasRequiredCredentials([]string{testEnvVar}) {
 		t.Error("hasRequiredCredentials should return false when env var is not set")
 	}
 
 	// Test when env var is set
-	os.Setenv(testEnvVar, "test-value")
+	if err := os.Setenv(testEnvVar, "test-value"); err != nil {
+		t.Fatalf("failed to set %s: %v", testEnvVar, err)
+	}
 	if !hasRequiredCredentials([]string{testEnvVar}) {
 		t.Error("hasRequiredCredentials should return true when env var is set")
 	}

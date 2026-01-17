@@ -272,7 +272,11 @@ func CreateNLMTestClient(t *testing.T, rt http.RoundTripper) *http.Client {
 		t.Fatal(err)
 	}
 
-	t.Cleanup(func() { rr.Close() })
+	t.Cleanup(func() {
+		if err := rr.Close(); err != nil {
+			t.Logf("httprr: failed to close recorder: %v", err)
+		}
+	})
 	return rr.Client()
 }
 

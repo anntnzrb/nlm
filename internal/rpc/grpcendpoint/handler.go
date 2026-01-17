@@ -93,7 +93,9 @@ func (c *Client) Execute(req Request) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read the response
 	body, err := io.ReadAll(resp.Body)
@@ -205,7 +207,9 @@ func (c *Client) Stream(req Request, handler func(chunk []byte) error) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

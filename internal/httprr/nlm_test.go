@@ -12,8 +12,14 @@ import (
 func TestOpenForNLMTest(t *testing.T) {
 	// Clean up any existing test files
 	testDataDir := "testdata"
-	os.RemoveAll(testDataDir)
-	defer os.RemoveAll(testDataDir)
+	if err := os.RemoveAll(testDataDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.RemoveAll(testDataDir); err != nil {
+			t.Errorf("failed to remove %s: %v", testDataDir, err)
+		}
+	}()
 
 	// Create a test recording file first
 	if err := os.MkdirAll(testDataDir, 0755); err != nil {
@@ -31,7 +37,11 @@ func TestOpenForNLMTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rr.Close()
+	defer func() {
+		if err := rr.Close(); err != nil {
+			t.Errorf("failed to close httprr: %v", err)
+		}
+	}()
 
 	// Verify that NLM-specific scrubbers are configured
 	if len(rr.reqScrub) < 3 { // default + 2 NLM scrubbers
@@ -46,8 +56,14 @@ func TestOpenForNLMTest(t *testing.T) {
 func TestCreateNLMTestClient(t *testing.T) {
 	// Clean up any existing test files
 	testDataDir := "testdata"
-	os.RemoveAll(testDataDir)
-	defer os.RemoveAll(testDataDir)
+	if err := os.RemoveAll(testDataDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.RemoveAll(testDataDir); err != nil {
+			t.Errorf("failed to remove %s: %v", testDataDir, err)
+		}
+	}()
 
 	// Create a test recording file first
 	if err := os.MkdirAll(testDataDir, 0755); err != nil {
@@ -226,20 +242,32 @@ func TestSkipIfNoNLMCredentialsOrRecording(t *testing.T) {
 	originalCookies := os.Getenv("NLM_COOKIES")
 	defer func() {
 		if originalToken != "" {
-			os.Setenv("NLM_AUTH_TOKEN", originalToken)
+			if err := os.Setenv("NLM_AUTH_TOKEN", originalToken); err != nil {
+				t.Fatalf("failed to restore NLM_AUTH_TOKEN: %v", err)
+			}
 		} else {
-			os.Unsetenv("NLM_AUTH_TOKEN")
+			if err := os.Unsetenv("NLM_AUTH_TOKEN"); err != nil {
+				t.Fatalf("failed to unset NLM_AUTH_TOKEN: %v", err)
+			}
 		}
 		if originalCookies != "" {
-			os.Setenv("NLM_COOKIES", originalCookies)
+			if err := os.Setenv("NLM_COOKIES", originalCookies); err != nil {
+				t.Fatalf("failed to restore NLM_COOKIES: %v", err)
+			}
 		} else {
-			os.Unsetenv("NLM_COOKIES")
+			if err := os.Unsetenv("NLM_COOKIES"); err != nil {
+				t.Fatalf("failed to unset NLM_COOKIES: %v", err)
+			}
 		}
 	}()
 
 	// Unset the env vars
-	os.Unsetenv("NLM_AUTH_TOKEN")
-	os.Unsetenv("NLM_COOKIES")
+	if err := os.Unsetenv("NLM_AUTH_TOKEN"); err != nil {
+		t.Fatalf("failed to unset NLM_AUTH_TOKEN: %v", err)
+	}
+	if err := os.Unsetenv("NLM_COOKIES"); err != nil {
+		t.Fatalf("failed to unset NLM_COOKIES: %v", err)
+	}
 
 	// Test that the function would call the underlying skip function
 	// We can't actually test skipping without creating a separate test function
@@ -247,7 +275,9 @@ func TestSkipIfNoNLMCredentialsOrRecording(t *testing.T) {
 	// SkipIfNoNLMCredentialsOrRecording(t) // This would skip the test
 
 	// Instead, test with credentials set
-	os.Setenv("NLM_AUTH_TOKEN", "test-token")
+	if err := os.Setenv("NLM_AUTH_TOKEN", "test-token"); err != nil {
+		t.Fatalf("failed to set NLM_AUTH_TOKEN: %v", err)
+	}
 	// This should not skip
 	// SkipIfNoNLMCredentialsOrRecording(t) // Still can't call this without skipping
 }
