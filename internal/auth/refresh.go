@@ -3,7 +3,7 @@ package auth
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // Required by SAPISIDHASH protocol.
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +21,7 @@ import (
 const (
 	// Google Signaler API for credential refresh
 	SignalerAPIURL = "https://signaler-pa.clients6.google.com/punctual/v1/refreshCreds"
-	SignalerAPIKey = "AIzaSyC_pzrI0AjEDXDYcg7kkq3uQEjnXV50pBM"
+	SignalerAPIKey = "AIzaSyC_pzrI0AjEDXDYcg7kkq3uQEjnXV50pBM" //nolint:gosec // Public API key used by the client.
 )
 
 // RefreshClient handles credential refreshing
@@ -104,7 +104,9 @@ func (r *RefreshClient) RefreshCredentials(gsessionID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send refresh request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read the response
 	body, err := io.ReadAll(resp.Body)
@@ -137,7 +139,7 @@ func (r *RefreshClient) generateSAPISIDHASH(timestamp int64) string {
 	origin := "https://notebooklm.google.com"
 	data := fmt.Sprintf("%d %s %s", timestamp, r.sapisid, origin)
 
-	hash := sha1.New()
+	hash := sha1.New() //nolint:gosec // Required by SAPISIDHASH protocol.
 	hash.Write([]byte(data))
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }

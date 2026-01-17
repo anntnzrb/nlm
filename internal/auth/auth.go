@@ -17,6 +17,8 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
+const defaultProfileName = "Default"
+
 type BrowserAuth struct {
 	debug           bool
 	tempDir         string
@@ -67,22 +69,6 @@ func (ba *BrowserAuth) tryMultipleProfiles(targetURL string) (token, cookies str
 		return "", "", fmt.Errorf("no valid browser profiles found")
 	}
 
-	// Convert to profile names by browser
-	type BrowserProfile struct {
-		Browser string
-		Name    string
-		Path    string
-	}
-
-	var browserProfiles []BrowserProfile
-	for _, p := range profiles {
-		browserProfiles = append(browserProfiles, BrowserProfile{
-			Browser: p.Browser,
-			Name:    p.Name,
-			Path:    p.Path,
-		})
-	}
-
 	// Try each profile
 	for _, profile := range profiles {
 		if ba.debug {
@@ -119,7 +105,7 @@ func (ba *BrowserAuth) tryMultipleProfiles(targetURL string) (token, cookies str
 				if ba.debug {
 					fmt.Printf("Error copying profile %s: %v\n", profile.Name, err)
 				}
-				os.RemoveAll(tempDir)
+				_ = os.RemoveAll(tempDir)
 				continue
 			}
 		}
@@ -158,7 +144,7 @@ func (ba *BrowserAuth) tryMultipleProfiles(targetURL string) (token, cookies str
 		// If using original profile, add the specific profile directory flag
 		if useOriginal == "1" {
 			profileName := filepath.Base(profile.Path)
-			if profileName != "Default" {
+			if profileName != defaultProfileName {
 				opts = append(opts, chromedp.Flag("profile-directory", profileName))
 			}
 		}
@@ -381,7 +367,9 @@ func countNotebooks(token, cookies string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("request notebooks: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Check response code
 	if resp.StatusCode != http.StatusOK {
@@ -403,7 +391,7 @@ func countNotebooks(token, cookies string) (int, error) {
 
 func (ba *BrowserAuth) GetAuth(opts ...Option) (token, cookies string, err error) {
 	o := &Options{
-		ProfileName:       "Default",
+		ProfileName:       defaultProfileName,
 		TryAllProfiles:    false,
 		ScanBeforeAuth:    true, // Default to showing profile information
 		TargetURL:         "https://notebooklm.google.com",
@@ -481,7 +469,9 @@ func (ba *BrowserAuth) GetAuth(opts ...Option) (token, cookies string, err error
 						debug:   false,
 						tempDir: tempDir,
 					}
-					defer os.RemoveAll(tempDir)
+					defer func() {
+						_ = os.RemoveAll(tempDir)
+					}()
 
 					// Copy profile data
 					err = tempAuth.copyProfileDataFromPath(p.Path)
@@ -665,7 +655,7 @@ func (ba *BrowserAuth) GetAuth(opts ...Option) (token, cookies string, err error
 	// If using original profile, add the specific profile directory flag
 	if useOriginalProfile {
 		profileName := filepath.Base(selectedProfile.Path)
-		if profileName != "Default" {
+		if profileName != defaultProfileName {
 			chromeOpts = append(chromeOpts, chromedp.Flag("profile-directory", profileName))
 		}
 	}
@@ -704,20 +694,21 @@ func (ba *BrowserAuth) copyProfileData(profileName string) error {
 			if ba.debug {
 				fmt.Printf("Using Chrome Canary profile: %s\n", sourceDir)
 			}
-		} else if profileName == "Default" {
+		} else if profileName == defaultProfileName {
 			// If still not found and this is Default, try to find any recent profile
 			// Try to find the most recently used profile
 			profiles, _ := ba.scanProfiles()
 			if len(profiles) > 0 {
 				sourceDir = profiles[0].Path
 				if ba.debug {
-					fmt.Printf("Profile 'Default' not found, using most recently used profile: %s [%s]\n",
+					fmt.Printf("Profile '%s' not found, using most recently used profile: %s [%s]\n",
+						defaultProfileName,
 						profiles[0].Name, profiles[0].Browser)
 				}
 			} else if foundProfile := findMostRecentProfile(profilePath); foundProfile != "" {
 				sourceDir = foundProfile
 				if ba.debug {
-					fmt.Printf("Profile 'Default' not found, using most recently used profile: %s\n", sourceDir)
+					fmt.Printf("Profile '%s' not found, using most recently used profile: %s\n", defaultProfileName, sourceDir)
 				}
 			}
 		}
@@ -733,7 +724,7 @@ func (ba *BrowserAuth) copyProfileDataFromPath(sourceDir string) error {
 	}
 
 	// Create Default profile directory
-	defaultDir := filepath.Join(ba.tempDir, "Default")
+	defaultDir := filepath.Join(ba.tempDir, defaultProfileName)
 	if err := os.MkdirAll(defaultDir, 0755); err != nil {
 		return fmt.Errorf("create profile dir: %w", err)
 	}
@@ -906,10 +897,10 @@ func (ba *BrowserAuth) cleanup() {
 		ba.cancel()
 	}
 	if ba.chromeCmd != nil && ba.chromeCmd.Process != nil {
-		ba.chromeCmd.Process.Kill()
+		_ = ba.chromeCmd.Process.Kill()
 	}
 	if ba.tempDir != "" {
-		os.RemoveAll(ba.tempDir)
+		_ = os.RemoveAll(ba.tempDir)
 	}
 }
 
@@ -918,13 +909,17 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer func() {
+		_ = source.Close()
+	}()
 
 	destination, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destination.Close()
+	defer func() {
+		_ = destination.Close()
+	}()
 
 	_, err = io.Copy(destination, source)
 	return err
