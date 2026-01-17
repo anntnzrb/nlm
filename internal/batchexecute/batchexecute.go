@@ -579,8 +579,14 @@ func decodeChunkedResponse(r io.Reader) ([]Response, error) {
 			continue
 		}
 
-		var rpcBatch [][]interface{}
-		if err := json.Unmarshal(chunk, &rpcBatch); err != nil {
+		var decoded interface{}
+		if err := json.Unmarshal(chunk, &decoded); err != nil {
+			bestEffort = true
+			continue
+		}
+
+		rpcBatch, err := normalizeResponseArray(decoded)
+		if err != nil {
 			bestEffort = true
 			continue
 		}
@@ -709,6 +715,7 @@ func normalizeResponseArray(decoded interface{}) ([][]interface{}, error) {
 		var responseArray [][]interface{}
 		for _, item := range respSlice {
 			if itemSlice, ok := item.([]interface{}); ok {
+				itemSlice = unwrapSingleNestedArray(itemSlice)
 				responseArray = append(responseArray, itemSlice)
 			}
 		}
@@ -719,6 +726,17 @@ func normalizeResponseArray(decoded interface{}) ([][]interface{}, error) {
 	}
 
 	return nil, fmt.Errorf("unexpected response format: %T", decoded)
+}
+
+func unwrapSingleNestedArray(item []interface{}) []interface{} {
+	for len(item) == 1 {
+		nested, ok := item[0].([]interface{})
+		if !ok {
+			break
+		}
+		item = nested
+	}
+	return item
 }
 
 func normalizeResponseData(raw json.RawMessage) json.RawMessage {
