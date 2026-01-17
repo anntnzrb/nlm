@@ -20,7 +20,7 @@ func TestHTTPRecorder(t *testing.T) {
 
 	// Create a temporary directory for storing request/response data
 	recordDir := filepath.Join(os.TempDir(), "nlm-http-records")
-	err := os.MkdirAll(recordDir, 0755)
+	err := os.MkdirAll(recordDir, 0o700)
 	if err != nil {
 		t.Fatalf("Failed to create record directory: %v", err)
 	}
@@ -32,6 +32,7 @@ func TestHTTPRecorder(t *testing.T) {
 		timestamp := time.Now().Format("20060102-150405.000")
 		filename := filepath.Join(recordDir, fmt.Sprintf("%s-request.txt", timestamp))
 
+		//nolint:gosec // test output file path is controlled
 		reqFile, err := os.Create(filename)
 		if err != nil {
 			t.Logf("Failed to create request file: %v", err)
@@ -77,6 +78,7 @@ func TestHTTPRecorder(t *testing.T) {
 
 		// Record the response
 		respFilename := filepath.Join(recordDir, fmt.Sprintf("%s-response.txt", timestamp))
+		//nolint:gosec // test output file path is controlled
 		respFile, err := os.Create(respFilename)
 		if err != nil {
 			t.Logf("Failed to create response file: %v", err)

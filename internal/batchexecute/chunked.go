@@ -16,6 +16,8 @@ import (
 // <chunk-length>
 // <chunk-data>
 // ...
+//
+//nolint:unused // retained for alternate chunked parsing
 func parseChunkedResponse(r io.Reader) ([]Response, error) {
 	// First, strip the prefix if present
 	br := bufio.NewReader(r)
@@ -166,6 +168,8 @@ func parseChunkedResponse(r io.Reader) ([]Response, error) {
 
 // extractWRBResponse attempts to manually extract a response from a chunk that contains "wrb.fr"
 // but can't be properly parsed as JSON
+//
+//nolint:unused // retained for alternate chunked parsing
 func extractWRBResponse(chunk string) *Response {
 	// Try to parse this as a regular JSON array first
 	var data []interface{}
@@ -242,6 +246,8 @@ func extractWRBResponse(chunk string) *Response {
 }
 
 // findJSONEnd finds the end of a JSON object or array starting from the given position
+//
+//nolint:unused // retained for alternate chunked parsing
 func findJSONEnd(s string, start int, openChar, closeChar rune) int {
 	count := 0
 	inQuotes := false
@@ -266,9 +272,10 @@ func findJSONEnd(s string, start int, openChar, closeChar rune) int {
 		}
 
 		if !inQuotes {
-			if c == openChar {
+			switch c {
+			case openChar:
 				count++
-			} else if c == closeChar {
+			case closeChar:
 				count--
 				if count == 0 {
 					return i + 1
@@ -282,6 +289,8 @@ func findJSONEnd(s string, start int, openChar, closeChar rune) int {
 
 // processChunks processes all chunks and extracts the RPC responses
 // isNumeric checks if a string contains only numeric characters
+//
+//nolint:unused // retained for alternate chunked parsing
 func isNumeric(s string) bool {
 	if s == "" {
 		return false
@@ -294,6 +303,7 @@ func isNumeric(s string) bool {
 	return true
 }
 
+//nolint:unused // retained for alternate chunked parsing
 func processChunks(chunks []string) ([]Response, error) {
 	fmt.Printf("DEBUG: processChunks called with %d chunks\n", len(chunks))
 	for i, chunk := range chunks {
@@ -381,6 +391,8 @@ func processChunks(chunks []string) ([]Response, error) {
 }
 
 // extractResponses extracts Response objects from RPC data
+//
+//nolint:unused // retained for alternate chunked parsing
 func extractResponses(data [][]interface{}) ([]Response, error) {
 	var responses []Response
 

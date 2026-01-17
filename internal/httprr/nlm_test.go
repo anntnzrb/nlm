@@ -9,27 +9,42 @@ import (
 	"testing"
 )
 
-func TestOpenForNLMTest(t *testing.T) {
-	// Clean up any existing test files
-	testDataDir := "testdata"
+const (
+	testDataDir          = "testdata"
+	testRequestPlainText = "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"
+	testResponseJSON     = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"test\"}"
+)
+
+func setupTestDataDir(t *testing.T) string {
+	t.Helper()
 	if err := os.RemoveAll(testDataDir); err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
+	t.Cleanup(func() {
 		if err := os.RemoveAll(testDataDir); err != nil {
 			t.Errorf("failed to remove %s: %v", testDataDir, err)
 		}
-	}()
-
-	// Create a test recording file first
-	if err := os.MkdirAll(testDataDir, 0755); err != nil {
+	})
+	if err := os.MkdirAll(testDataDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	return testDataDir
+}
+
+func TestOpenForNLMTest(t *testing.T) {
+	// Clean up any existing test files
+	testDataDir := setupTestDataDir(t)
+
+	// Create a test recording file first
 	testFile := filepath.Join(testDataDir, "TestOpenForNLMTest.httprr")
-	request := "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"
-	response := "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"test\"}"
-	httprContent := fmt.Sprintf("httprr trace v1\n%d %d\n%s%s", len(request), len(response), request, response)
-	if err := os.WriteFile(testFile, []byte(httprContent), 0644); err != nil {
+	httprContent := fmt.Sprintf(
+		"httprr trace v1\n%d %d\n%s%s",
+		len(testRequestPlainText),
+		len(testResponseJSON),
+		testRequestPlainText,
+		testResponseJSON,
+	)
+	if err := os.WriteFile(testFile, []byte(httprContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -55,25 +70,18 @@ func TestOpenForNLMTest(t *testing.T) {
 
 func TestCreateNLMTestClient(t *testing.T) {
 	// Clean up any existing test files
-	testDataDir := "testdata"
-	if err := os.RemoveAll(testDataDir); err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.RemoveAll(testDataDir); err != nil {
-			t.Errorf("failed to remove %s: %v", testDataDir, err)
-		}
-	}()
+	testDataDir := setupTestDataDir(t)
 
 	// Create a test recording file first
-	if err := os.MkdirAll(testDataDir, 0755); err != nil {
-		t.Fatal(err)
-	}
 	testFile := filepath.Join(testDataDir, "TestCreateNLMTestClient.httprr")
-	request := "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"
-	response := "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"test\"}"
-	httprContent := fmt.Sprintf("httprr trace v1\n%d %d\n%s%s", len(request), len(response), request, response)
-	if err := os.WriteFile(testFile, []byte(httprContent), 0644); err != nil {
+	httprContent := fmt.Sprintf(
+		"httprr trace v1\n%d %d\n%s%s",
+		len(testRequestPlainText),
+		len(testResponseJSON),
+		testRequestPlainText,
+		testResponseJSON,
+	)
+	if err := os.WriteFile(testFile, []byte(httprContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

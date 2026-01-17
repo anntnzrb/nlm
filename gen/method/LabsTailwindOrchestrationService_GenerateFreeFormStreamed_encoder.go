@@ -1,8 +1,6 @@
 package method
 
-import (
-	notebooklmv1alpha1 "github.com/tmc/nlm/gen/notebooklm/v1alpha1"
-)
+import notebooklmv1alpha1 "github.com/tmc/nlm/gen/notebooklm/v1alpha1"
 
 // GENERATION_BEHAVIOR: append
 
@@ -22,13 +20,13 @@ func EncodeGenerateFreeFormStreamedArgs(req *notebooklmv1alpha1.GenerateFreeForm
 
 	// Build the full argument array
 	args := []interface{}{
-		sourceIDsNested,  // Position 0: [[source_ids]]
-		req.GetPrompt(),  // Position 1: prompt text
-		nil,              // Position 2
-		nil,              // Position 3
-		nil,              // Position 4
-		nil,              // Position 5
-		nil,              // Position 6
+		sourceIDsNested,                         // Position 0: [[source_ids]]
+		req.GetPrompt(),                         // Position 1: prompt text
+		nil,                                     // Position 2
+		nil,                                     // Position 3
+		nil,                                     // Position 4
+		nil,                                     // Position 5
+		nil,                                     // Position 6
 		[]interface{}{2, nil, []interface{}{1}}, // Position 7: metadata
 	}
 

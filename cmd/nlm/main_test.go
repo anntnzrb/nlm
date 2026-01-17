@@ -15,6 +15,7 @@ import (
 
 func TestMain(m *testing.M) {
 	// Build the nlm binary for testing
+	//nolint:gosec // test build with fixed args
 	cmd := exec.Command("go", "build", "-o", "nlm_test", ".")
 	if err := cmd.Run(); err != nil {
 		panic("failed to build nlm for testing: " + err.Error())
@@ -28,13 +29,22 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+func cleanupTempDir(t *testing.T, dir string) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Fatalf("failed to remove temp dir: %v", err)
+		}
+	})
+}
+
 func TestCLICommands(t *testing.T) {
 	// Create a temporary home directory for test isolation
 	tmpHome, err := os.MkdirTemp("", "nlm-test-home-*")
 	if err != nil {
 		t.Fatalf("failed to create temp home: %v", err)
 	}
-	defer os.RemoveAll(tmpHome)
+	cleanupTempDir(t, tmpHome)
 
 	// Set up the script test environment
 	engine := script.NewEngine()
@@ -110,7 +120,7 @@ func TestHelpCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp home: %v", err)
 	}
-	defer os.RemoveAll(tmpHome)
+	cleanupTempDir(t, tmpHome)
 
 	tests := []struct {
 		name     string
@@ -141,6 +151,7 @@ func TestHelpCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run the command directly using exec.Command
+			//nolint:gosec // test command with fixed binary and args
 			cmd := exec.Command("./nlm_test", tt.args...)
 			cmd.Env = []string{
 				"PATH=" + os.Getenv("PATH"),
@@ -174,7 +185,7 @@ func TestCommandValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp home: %v", err)
 	}
-	defer os.RemoveAll(tmpHome)
+	cleanupTempDir(t, tmpHome)
 
 	tests := []struct {
 		name     string
@@ -223,6 +234,7 @@ func TestCommandValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run the command directly using exec.Command
+			//nolint:gosec // test command with fixed binary and args
 			cmd := exec.Command("./nlm_test", tt.args...)
 			cmd.Env = []string{
 				"PATH=" + os.Getenv("PATH"),
@@ -259,7 +271,7 @@ func TestFlags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp home: %v", err)
 	}
-	defer os.RemoveAll(tmpHome)
+	cleanupTempDir(t, tmpHome)
 
 	tests := []struct {
 		name string
@@ -337,7 +349,7 @@ func TestAuthRequirements(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp home: %v", err)
 	}
-	defer os.RemoveAll(tmpHome)
+	cleanupTempDir(t, tmpHome)
 
 	tests := []struct {
 		name         string
@@ -356,6 +368,7 @@ func TestAuthRequirements(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run without auth credentials
+			//nolint:gosec // test command with fixed binary and args
 			cmd := exec.Command("./nlm_test", tt.command...)
 			// Clear auth environment variables and use isolated HOME
 			cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + tmpHome}

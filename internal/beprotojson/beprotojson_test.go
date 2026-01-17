@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	// TODO: separate from anything nlm related
+	pb "github.com/tmc/nlm/gen/notebooklm/v1alpha1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-
-	// TODO: separate from anything nlm related
-	pb "github.com/tmc/nlm/gen/notebooklm/v1alpha1"
 )
 
 func TestUnmarshal(t *testing.T) {

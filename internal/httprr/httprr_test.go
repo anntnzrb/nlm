@@ -16,6 +16,11 @@ func TestOpenForTest(t *testing.T) {
 	if err := os.RemoveAll(testDataDir); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(testDataDir); err != nil {
+			t.Errorf("failed to remove %s: %v", testDataDir, err)
+		}
+	})
 
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +33,7 @@ func TestOpenForTest(t *testing.T) {
 	defer server.Close()
 
 	// Test recording mode (simulated by creating the file first)
-	if err := os.MkdirAll(testDataDir, 0755); err != nil {
+	if err := os.MkdirAll(testDataDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -37,7 +42,7 @@ func TestOpenForTest(t *testing.T) {
 	response := "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"test response\"}"
 	httprContent := fmt.Sprintf("httprr trace v1\n%d %d\n%s%s", len(request), len(response), request, response)
 
-	if err := os.WriteFile(testFile, []byte(httprContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(httprContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -209,17 +214,21 @@ func TestRecordingFunction(t *testing.T) {
 
 func TestRecordingTransportLegacy(t *testing.T) {
 	// Create testdata directory if it doesn't exist
-	if err := os.MkdirAll("testdata", 0755); err != nil {
+	if err := os.MkdirAll("testdata", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll("testdata")
+	t.Cleanup(func() {
+		if err := os.RemoveAll("testdata"); err != nil {
+			t.Errorf("failed to remove testdata: %v", err)
+		}
+	})
 
 	// Create a minimal httprr file for testing
 	testFile := "testdata/test.httprr"
 	request := "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"
 	response := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\ntest"
 	httprContent := fmt.Sprintf("httprr trace v1\n%d %d\n%s%s", len(request), len(response), request, response)
-	if err := os.WriteFile(testFile, []byte(httprContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(httprContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

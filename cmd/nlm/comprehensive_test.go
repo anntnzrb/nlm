@@ -65,6 +65,7 @@ func TestComprehensiveScripts(t *testing.T) {
 			}()
 
 			// Read test file
+			//nolint:gosec // test file path is controlled
 			content, err := os.ReadFile(testFile)
 			if err != nil {
 				t.Fatalf("failed to read test file: %v", err)

@@ -178,7 +178,9 @@ func main() {
 
 	// Set skip sources flag if specified
 	if skipSources {
-		os.Setenv("NLM_SKIP_SOURCES", "true")
+		if err := os.Setenv("NLM_SKIP_SOURCES", "true"); err != nil {
+			fmt.Fprintf(os.Stderr, "nlm: failed to set NLM_SKIP_SOURCES: %v\n", err)
+		}
 		if debug {
 			fmt.Fprintf(os.Stderr, "nlm: skipping source fetching for chat\n")
 		}
@@ -654,7 +656,7 @@ func saveCredentials(authToken, cookies string) error {
 
 	// Create .nlm directory if it doesn't exist
 	nlmDir := filepath.Join(home, ".nlm")
-	if err := os.MkdirAll(nlmDir, 0755); err != nil {
+	if err := os.MkdirAll(nlmDir, 0o700); err != nil {
 		return fmt.Errorf("create nlm directory: %w", err)
 	}
 
@@ -669,7 +671,7 @@ NLM_BROWSER_PROFILE=%q
 		chromeProfile,
 	)
 
-	if err := os.WriteFile(envFile, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("write env file: %w", err)
 	}
 
@@ -860,7 +862,7 @@ func list(c *api.Client) error {
 			title = title[:42] + "..."
 		}
 		sourceCount := len(nb.Sources)
-		fmt.Fprintf(w, "%s\t%s\t%d\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\n",
 			nb.ProjectId, title, sourceCount,
 			nb.GetMetadata().GetCreateTime().AsTime().Format(time.RFC3339),
 		)
@@ -912,7 +914,7 @@ func listSources(c *api.Client, notebookID string) error {
 			sourceType = src.Metadata.GetSourceType().String()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			src.SourceId.GetSourceId(),
 			strings.TrimSpace(src.Title),
 			sourceType,
@@ -949,11 +951,16 @@ func addSource(c *api.Client, notebookID, input string) (string, error) {
 		if mimeType != "" {
 			fmt.Fprintf(os.Stderr, "Using specified MIME type: %s\n", mimeType)
 			// Read the file and use AddSourceFromReader with the specified MIME type
+			//nolint:gosec // user-provided file path
 			file, err := os.Open(input)
 			if err != nil {
 				return "", fmt.Errorf("open file: %w", err)
 			}
-			defer file.Close()
+			defer func() {
+				if err := file.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "nlm: failed to close %s: %v\n", input, err)
+				}
+			}()
 			return c.AddSourceFromReader(notebookID, file, filepath.Base(input), mimeType)
 		}
 		return c.AddSourceFromFile(notebookID, input)
@@ -1053,7 +1060,7 @@ func listNotes(c *api.Client, notebookID string) error {
 		if title == "" {
 			title = untitledTitle
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
 			noteID,
 			title,
 			lastModified,
@@ -1089,7 +1096,8 @@ func getAudioOverview(c *api.Client, projectID string) error {
 		}
 
 		filename := fmt.Sprintf("audio_overview_%s.wav", result.AudioID)
-		if err := os.WriteFile(filename, audioData, 0644); err != nil {
+		//nolint:gosec // user-requested output file should be readable
+		if err := os.WriteFile(filename, audioData, 0o644); err != nil {
 			return fmt.Errorf("save audio file: %w", err)
 		}
 		fmt.Printf("  Saved audio to: %s\n", filename)
@@ -1181,7 +1189,7 @@ func generateMindmap(c *api.Client, notebookID string, sourceIDs []string) error
 	return nil
 }
 
-func actOnSources(c *api.Client, notebookID string, action string, sourceIDs []string) error {
+func actOnSources(c *api.Client, notebookID, action string, sourceIDs []string) error {
 	actionName := map[string]string{
 		"rephrase":            "Rephrasing",
 		"expand":              "Expanding",
@@ -1231,7 +1239,7 @@ func actOnSources(c *api.Client, notebookID string, action string, sourceIDs []s
 // }
 
 // Other operations
-func createAudioOverview(c *api.Client, projectID string, instructions string) error {
+func createAudioOverview(c *api.Client, projectID, instructions string) error {
 	fmt.Printf("Creating audio overview for notebook %s...\n", projectID)
 	fmt.Printf("Instructions: %s\n", instructions)
 
@@ -1258,7 +1266,8 @@ func createAudioOverview(c *api.Client, projectID string, instructions string) e
 		}
 
 		filename := fmt.Sprintf("audio_overview_%s.wav", result.AudioID)
-		if err := os.WriteFile(filename, audioData, 0644); err != nil {
+		//nolint:gosec // user-requested output file should be readable
+		if err := os.WriteFile(filename, audioData, 0o644); err != nil {
 			return fmt.Errorf("save audio file: %w", err)
 		}
 		fmt.Printf("  Saved audio to: %s\n", filename)
@@ -1319,7 +1328,7 @@ func listFeaturedProjects(c *api.Client) error {
 		if len(project.Sources) > 0 {
 			description = fmt.Sprintf("%d sources", len(project.Sources))
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
 			project.ProjectId,
 			strings.TrimSpace(project.Emoji)+" "+project.Title,
 			description)
@@ -1403,7 +1412,7 @@ func discoverSources(c *api.Client, projectID, query string) error {
 			relevance = source.Metadata.GetSourceType().String()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			source.SourceId.GetSourceId(),
 			strings.TrimSpace(source.Title),
 			source.Metadata.GetSourceType(),
@@ -1499,6 +1508,8 @@ func listArtifacts(c *api.Client, projectID string) error {
 }
 
 // listArtifactsDirectRPC uses direct RPC to list artifacts
+//
+//nolint:unused // retained for optional direct RPC path
 func listArtifactsDirectRPC(c *api.Client, projectID string) ([]*pb.Artifact, error) {
 	// Use the client's RPC capabilities
 	return c.ListArtifacts(projectID)
@@ -1506,7 +1517,6 @@ func listArtifactsDirectRPC(c *api.Client, projectID string) ([]*pb.Artifact, er
 
 // displayArtifacts shows artifacts in a formatted table
 func displayArtifacts(artifacts []*pb.Artifact) error {
-
 	if len(artifacts) == 0 {
 		fmt.Println("No artifacts found in project.")
 		return nil
@@ -1518,7 +1528,7 @@ func displayArtifacts(artifacts []*pb.Artifact) error {
 	for _, artifact := range artifacts {
 		sourceCount := fmt.Sprintf("%d", len(artifact.Sources))
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			artifact.ArtifactId,
 			artifact.Type.String(),
 			artifact.State.String(),
@@ -1731,12 +1741,13 @@ func getChatSessionPath(notebookID string) string {
 	}
 
 	nlmDir := filepath.Join(homeDir, ".nlm")
-	_ = os.MkdirAll(nlmDir, 0700) // Ensure directory exists
+	_ = os.MkdirAll(nlmDir, 0o700) // Ensure directory exists
 	return filepath.Join(nlmDir, fmt.Sprintf("chat-%s.json", notebookID))
 }
 
 func loadChatSession(notebookID string) (*ChatSession, error) {
 	path := getChatSessionPath(notebookID)
+	//nolint:gosec // file path is user-provided
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -1758,7 +1769,7 @@ func saveChatSession(session *ChatSession) error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0600)
+	return os.WriteFile(path, data, 0o600)
 }
 
 func listChatSessions() error {
@@ -1778,6 +1789,7 @@ func listChatSessions() error {
 	for _, entry := range entries {
 		if strings.HasPrefix(entry.Name(), "chat-") && strings.HasSuffix(entry.Name(), ".json") {
 			sessionPath := filepath.Join(nlmDir, entry.Name())
+			//nolint:gosec // file path is user-provided
 			data, err := os.ReadFile(sessionPath)
 			if err != nil {
 				continue
@@ -1807,7 +1819,7 @@ func listChatSessions() error {
 	for _, session := range sessions {
 		lastUpdated := session.UpdatedAt.Format("Jan 2 15:04")
 		created := session.CreatedAt.Format("Jan 2 15:04")
-		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\n",
 			session.NotebookID,
 			len(session.Messages),
 			lastUpdated,
@@ -2170,7 +2182,7 @@ func startAutoRefreshIfEnabled() {
 	}
 }
 
-func createVideoOverview(c *api.Client, projectID string, instructions string) error {
+func createVideoOverview(c *api.Client, projectID, instructions string) error {
 	fmt.Printf("Creating video overview for notebook %s...\n", projectID)
 	fmt.Printf("Instructions: %s\n", instructions)
 
@@ -2221,7 +2233,7 @@ func listAudioOverviews(c *api.Client, notebookID string) error {
 		if title == "" {
 			title = untitledTitle
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
 			audio.ProjectID,
 			title,
 			status,
@@ -2254,7 +2266,7 @@ func listVideoOverviews(c *api.Client, notebookID string) error {
 		if title == "" {
 			title = untitledTitle
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
 			video.VideoID,
 			title,
 			status,
@@ -2263,7 +2275,7 @@ func listVideoOverviews(c *api.Client, notebookID string) error {
 	return w.Flush()
 }
 
-func downloadAudioOverview(c *api.Client, notebookID string, filename string) error {
+func downloadAudioOverview(c *api.Client, notebookID, filename string) error {
 	fmt.Printf("Downloading audio overview for notebook %s...\n", notebookID)
 
 	// Generate default filename if not provided
@@ -2292,7 +2304,7 @@ func downloadAudioOverview(c *api.Client, notebookID string, filename string) er
 	return nil
 }
 
-func downloadVideoOverview(c *api.Client, notebookID string, filename string) error {
+func downloadVideoOverview(c *api.Client, notebookID, filename string) error {
 	fmt.Printf("Downloading video overview for notebook %s...\n", notebookID)
 
 	// Generate default filename if not provided

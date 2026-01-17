@@ -1,3 +1,4 @@
+//nolint:unused // helper encoders reserved for future RPC variants
 package method
 
 import (

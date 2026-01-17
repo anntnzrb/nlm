@@ -87,6 +87,7 @@ func getBrowserPathForProfile(browserName string) string {
 	return getChromePath()
 }
 
+//nolint:unused // retained for future browser detection enhancements
 func detectChrome(debug bool) Browser {
 	// First try standard paths
 	for _, browser := range macOSBrowserPaths {
@@ -142,6 +143,7 @@ func detectChrome(debug bool) Browser {
 }
 
 func findBrowserViaMDFind(bundleID string) string {
+	//nolint:gosec // fixed command for bundle lookup
 	cmd := exec.Command("mdfind", fmt.Sprintf("kMDItemCFBundleIdentifier == '%s'", bundleID))
 	out, err := cmd.Output()
 	if err == nil && len(out) > 0 {
@@ -177,7 +179,9 @@ func getMostRecentPath(paths []string) string {
 	return mostRecent
 }
 
+//nolint:unused // retained for future browser detection enhancements
 func getChromeVersion(path string) string {
+	//nolint:gosec // fixed binary path and args for version detection
 	cmd := exec.Command(path, "--version")
 	out, err := cmd.Output()
 	if err != nil {
@@ -186,7 +190,9 @@ func getChromeVersion(path string) string {
 	return strings.TrimSpace(strings.TrimPrefix(string(out), "Google Chrome "))
 }
 
+//nolint:unused // retained for future browser detection enhancements
 func removeQuarantine(path string) error {
+	//nolint:gosec // fixed command and args for local quarantine removal
 	cmd := exec.Command("xattr", "-d", "com.apple.quarantine", path)
 	return cmd.Run()
 }
@@ -217,6 +223,7 @@ func getBraveProfilePath() string {
 	return filepath.Join(home, "Library", "Application Support", "BraveSoftware", "Brave-Browser")
 }
 
+//nolint:unused // retained for future browser detection enhancements
 func checkBrowserInstallation() string {
 	var messages []string
 	var found bool

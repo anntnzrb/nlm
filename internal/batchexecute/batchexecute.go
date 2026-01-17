@@ -57,7 +57,7 @@ func sanitizeJSON(input string) string {
 					hex := input[i+2 : i+6]
 					valid := true
 					for _, h := range hex {
-						if !((h >= '0' && h <= '9') || (h >= 'a' && h <= 'f') || (h >= 'A' && h <= 'F')) {
+						if (h < '0' || h > '9') && (h < 'a' || h > 'f') && (h < 'A' || h > 'F') {
 							valid = false
 							break
 						}
@@ -272,7 +272,7 @@ func (c *Client) Execute(rpcs []RPC) (*Response, error) {
 	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {
 		if attempt > 0 {
 			// Calculate retry delay with exponential backoff
-			multiplier := 1 << uint(attempt-1)
+			multiplier := 1 << (attempt - 1)
 			delay := time.Duration(float64(c.config.RetryDelay) * float64(multiplier))
 			if delay > c.config.RetryMaxDelay {
 				delay = c.config.RetryMaxDelay
@@ -758,6 +758,7 @@ func normalizeResponseData(raw json.RawMessage) json.RawMessage {
 	return raw
 }
 
+//nolint:unused // retained for future error handling helpers
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -904,6 +905,7 @@ type ReqIDGenerator struct {
 // NewReqIDGenerator creates a new request ID generator
 func NewReqIDGenerator() *ReqIDGenerator {
 	// Generate random 4-digit number (1000-9999)
+	//nolint:gosec // non-crypto randomness for request ID jitter
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	base := r.Intn(9000) + 1000
 
@@ -931,6 +933,8 @@ func (g *ReqIDGenerator) Reset() {
 }
 
 // readUntil reads from the reader until the delimiter is found
+//
+//nolint:unused // retained for future stream parsing helpers
 func readUntil(r io.Reader, delim byte) (string, error) {
 	var result strings.Builder
 	buf := make([]byte, 1)

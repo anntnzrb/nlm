@@ -23,6 +23,7 @@ func (b Browser) String() string {
 	return fmt.Sprintf("%s (%s)", b.Name, b.Version)
 }
 
+//nolint:unused // retained for future browser detection enhancements
 func detectBrowsers(debug bool) []Browser {
 	var browsers []Browser
 

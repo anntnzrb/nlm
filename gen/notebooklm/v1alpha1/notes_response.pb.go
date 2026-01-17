@@ -1,6 +1,7 @@
 // Handwritten protobuf types for GetNotes API response parsing.
 // These types match the actual structure returned by the NotebookLM API
 // rather than the standard Source structure.
+//nolint:unused // protoimpl fields kept for parity with generated messages
 
 package notebooklmv1alpha1
 
@@ -16,9 +17,9 @@ import (
 //	Position 0 -> field 1: source_id (string)
 //	Position 1 -> field 2: details (NoteDetails)
 type NoteEntry struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
+	state         protoimpl.MessageState  //nolint:unused // protoimpl parity
+	sizeCache     protoimpl.SizeCache     //nolint:unused // protoimpl parity
+	unknownFields protoimpl.UnknownFields //nolint:unused // protoimpl parity
 
 	SourceId string       `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
 	Details  *NoteDetails `protobuf:"bytes,2,opt,name=details,proto3" json:"details,omitempty"`
@@ -66,9 +67,9 @@ func (x *NoteEntry) GetDetails() *NoteDetails {
 //	Position 3 -> field 4: reserved (null, skipped)
 //	Position 4 -> field 5: title (string, the note title)
 type NoteDetails struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
+	state         protoimpl.MessageState  //nolint:unused // protoimpl parity
+	sizeCache     protoimpl.SizeCache     //nolint:unused // protoimpl parity
+	unknownFields protoimpl.UnknownFields //nolint:unused // protoimpl parity
 
 	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Content  string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
@@ -131,9 +132,9 @@ func (x *NoteDetails) GetTitle() string {
 //	Position 1 -> field 2: id (string)
 //	Position 2 -> field 3: timestamp (TimestampPair)
 type NoteTimestampMetadata struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
+	state         protoimpl.MessageState  //nolint:unused // protoimpl parity
+	sizeCache     protoimpl.SizeCache     //nolint:unused // protoimpl parity
+	unknownFields protoimpl.UnknownFields //nolint:unused // protoimpl parity
 
 	Type      int32          `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
 	Id        string         `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
@@ -186,9 +187,9 @@ func (x *NoteTimestampMetadata) GetTimestamp() *TimestampPair {
 //	Position 0 -> field 1: seconds (int64)
 //	Position 1 -> field 2: nanos (int32)
 type TimestampPair struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
+	state         protoimpl.MessageState  //nolint:unused // protoimpl parity
+	sizeCache     protoimpl.SizeCache     //nolint:unused // protoimpl parity
+	unknownFields protoimpl.UnknownFields //nolint:unused // protoimpl parity
 
 	Seconds int64 `protobuf:"varint,1,opt,name=seconds,proto3" json:"seconds,omitempty"`
 	Nanos   int32 `protobuf:"varint,2,opt,name=nanos,proto3" json:"nanos,omitempty"`

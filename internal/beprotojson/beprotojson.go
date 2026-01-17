@@ -13,8 +13,7 @@ import (
 )
 
 // MarshalOptions is a configurable JSON format marshaler.
-type MarshalOptions struct {
-}
+type MarshalOptions struct{}
 
 // Marshal writes the given proto.Message in batchexecute JSON format.
 func Marshal(m proto.Message) ([]byte, error) {
@@ -218,6 +217,7 @@ func (o UnmarshalOptions) populateMessage(arr []interface{}, m proto.Message) er
 			continue
 		}
 
+		//nolint:gosec // field numbers are bounded by proto descriptors
 		field := fields.ByNumber(protoreflect.FieldNumber(i + 1))
 		if field == nil {
 			if o.DebugFieldMapping {
@@ -341,6 +341,8 @@ func (o UnmarshalOptions) setRepeatedField(m protoreflect.Message, fd protorefle
 }
 
 // isEmptyArrayCode checks if a value represents an empty array code from the NotebookLM API
+//
+//nolint:unused // retained for alternative array decoding paths
 func isEmptyArrayCode(val interface{}) bool {
 	if num, isNum := val.(float64); isNum {
 		// For NotebookLM API, certain numbers represent empty arrays
@@ -517,6 +519,7 @@ func (o UnmarshalOptions) setMessageField(m protoreflect.Message, fd protoreflec
 				continue
 			}
 
+			//nolint:gosec // field numbers are bounded by proto descriptors
 			fieldNum := protoreflect.FieldNumber(i + 1)
 			field := fields.ByNumber(fieldNum)
 			if field == nil {
@@ -681,8 +684,10 @@ func (o UnmarshalOptions) convertValue(fd protoreflect.FieldDescriptor, val inte
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
 		switch v := val.(type) {
 		case float64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfInt32(int32(v)), nil
 		case int64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfInt32(int32(v)), nil
 		case int32:
 			return protoreflect.ValueOfInt32(v), nil
@@ -705,8 +710,10 @@ func (o UnmarshalOptions) convertValue(fd protoreflect.FieldDescriptor, val inte
 	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
 		switch v := val.(type) {
 		case float64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfUint32(uint32(v)), nil
 		case int64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfUint32(uint32(v)), nil
 		case uint32:
 			return protoreflect.ValueOfUint32(v), nil
@@ -717,8 +724,10 @@ func (o UnmarshalOptions) convertValue(fd protoreflect.FieldDescriptor, val inte
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		switch v := val.(type) {
 		case float64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfUint64(uint64(v)), nil
 		case int64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfUint64(uint64(v)), nil
 		case uint64:
 			return protoreflect.ValueOfUint64(v), nil
@@ -775,8 +784,10 @@ func (o UnmarshalOptions) convertValue(fd protoreflect.FieldDescriptor, val inte
 	case protoreflect.EnumKind:
 		switch v := val.(type) {
 		case float64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfEnum(protoreflect.EnumNumber(v)), nil
 		case int64:
+			//nolint:gosec // values come from trusted proto decoding
 			return protoreflect.ValueOfEnum(protoreflect.EnumNumber(v)), nil
 		case int32:
 			return protoreflect.ValueOfEnum(protoreflect.EnumNumber(v)), nil

@@ -39,7 +39,6 @@ func main() {
 		},
 		NotebookID: projectID,
 	})
-
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)

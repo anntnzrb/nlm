@@ -10,10 +10,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-var (
-	// Pattern to match %field_name% placeholders
-	fieldPattern = regexp.MustCompile(`%([a-z_]+)%`)
-)
+// Pattern to match %field_name% placeholders
+var fieldPattern = regexp.MustCompile(`%([a-z_]+)%`)
 
 // ArgumentEncoder handles generic encoding of protobuf messages to RPC arguments
 type ArgumentEncoder struct {
@@ -284,7 +282,7 @@ func (e *ArgumentEncoder) parseLiteral(s string) interface{} {
 		if n[0] >= '0' && n[0] <= '9' {
 			// Simple integer parsing for now
 			var val int
-			fmt.Sscanf(n, "%d", &val)
+			_, _ = fmt.Sscanf(n, "%d", &val)
 			return val
 		}
 	}

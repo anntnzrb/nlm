@@ -23,8 +23,10 @@ import (
 	"github.com/tmc/nlm/internal/rpc"
 )
 
-type Notebook = pb.Project
-type Note = pb.Source
+type (
+	Notebook = pb.Project
+	Note     = pb.Source
+)
 
 const (
 	contentTypeJSON = "application/json"
@@ -88,7 +90,7 @@ func (c *Client) ListRecentlyViewedProjects() ([]*Notebook, error) {
 	return response.Projects, nil
 }
 
-func (c *Client) CreateProject(title string, emoji string) (*Notebook, error) {
+func (c *Client) CreateProject(title, emoji string) (*Notebook, error) {
 	req := &pb.CreateProjectRequest{
 		Title: title,
 		Emoji: emoji,
@@ -231,7 +233,7 @@ func (c *Client) CheckSourceFreshness(sourceID string) (*pb.CheckSourceFreshness
 	return result, nil
 }
 
-func (c *Client) ActOnSources(projectID string, action string, sourceIDs []string) error {
+func (c *Client) ActOnSources(projectID, action string, sourceIDs []string) error {
 	req := &pb.ActOnSourcesRequest{
 		ProjectId: projectID,
 		Action:    action,
@@ -252,7 +254,7 @@ func (c *Client) ActOnSources(projectID string, action string, sourceIDs []strin
 // 2. Use http.DetectContentType for binary detection
 // 3. Use file extension as fallback
 // 4. Default to application/octet-stream if all else fails
-func detectMIMEType(content []byte, filename string, providedType string) string {
+func detectMIMEType(content []byte, filename, providedType string) string {
 	// Use explicitly provided type if available
 	if providedType != "" {
 		return providedType
@@ -319,7 +321,7 @@ func (c *Client) AddSourceFromReader(projectID string, r io.Reader, filename str
 	return c.AddSourceFromBase64(projectID, encoded, filename, detectedType)
 }
 
-func (c *Client) AddSourceFromText(projectID string, content, title string) (string, error) {
+func (c *Client) AddSourceFromText(projectID, content, title string) (string, error) {
 	resp, err := c.rpc.Do(rpc.Call{
 		ID:         rpc.RPCAddSources,
 		NotebookID: projectID,
@@ -349,7 +351,7 @@ func (c *Client) AddSourceFromText(projectID string, content, title string) (str
 	return sourceID, nil
 }
 
-func (c *Client) AddSourceFromBase64(projectID string, content, filename, contentType string) (string, error) {
+func (c *Client) AddSourceFromBase64(projectID, content, filename, contentType string) (string, error) {
 	// Decode base64 content to get raw bytes
 	rawContent, err := base64.StdEncoding.DecodeString(content)
 	if err != nil {
@@ -393,7 +395,8 @@ func (c *Client) AddSourceFromBase64(projectID string, content, filename, conten
 	return sourceID, nil
 }
 
-func (c *Client) AddSourceFromFile(projectID string, filepath string, contentType ...string) (string, error) {
+func (c *Client) AddSourceFromFile(projectID, filepath string, contentType ...string) (string, error) {
+	//nolint:gosec // file path is user-provided input
 	f, err := os.Open(filepath)
 	if err != nil {
 		return "", fmt.Errorf("open file: %w", err)
@@ -409,7 +412,7 @@ func (c *Client) AddSourceFromFile(projectID string, filepath string, contentTyp
 	return c.AddSourceFromReader(projectID, f, filepath, providedType)
 }
 
-func (c *Client) AddSourceFromURL(projectID string, url string) (string, error) {
+func (c *Client) AddSourceFromURL(projectID, url string) (string, error) {
 	// Check if it's a YouTube URL first
 	if isYouTubeURL(url) {
 		videoID, err := extractYouTubeVideoID(url)
@@ -673,7 +676,7 @@ func (c *Client) uploadFileContent(uploadURL string, content []byte) error {
 
 // Note operations
 
-func (c *Client) CreateNote(projectID string, title string, initialContent string) (*Note, error) {
+func (c *Client) CreateNote(projectID, title, initialContent string) (*Note, error) {
 	req := &pb.CreateNoteRequest{
 		ProjectId: projectID,
 		Content:   initialContent,
@@ -689,7 +692,7 @@ func (c *Client) CreateNote(projectID string, title string, initialContent strin
 	return note, nil
 }
 
-func (c *Client) MutateNote(projectID string, noteID string, content string, title string) (*Note, error) {
+func (c *Client) MutateNote(projectID, noteID, content, title string) (*Note, error) {
 	req := &pb.MutateNoteRequest{
 		ProjectId: projectID,
 		NoteId:    noteID,
@@ -734,7 +737,7 @@ func (c *Client) GetNotes(projectID string) ([]*Note, error) {
 
 // Audio operations
 
-func (c *Client) CreateAudioOverview(projectID string, instructions string) (*AudioOverviewResult, error) {
+func (c *Client) CreateAudioOverview(projectID, instructions string) (*AudioOverviewResult, error) {
 	if projectID == "" {
 		return nil, fmt.Errorf("project ID required")
 	}
@@ -762,16 +765,16 @@ func (c *Client) CreateAudioOverview(projectID string, instructions string) (*Au
 	// Note: pb.AudioOverview has different fields than expected, so we map what's available
 	result := &AudioOverviewResult{
 		ProjectID: projectID,
-		AudioID:   "",                                 // Not available in pb.AudioOverview
-		Title:     "",                                 // Not available in pb.AudioOverview
-		AudioData: audioOverview.Content,              // Map Content to AudioData
+		AudioID:   "",                                     // Not available in pb.AudioOverview
+		Title:     "",                                     // Not available in pb.AudioOverview
+		AudioData: audioOverview.Content,                  // Map Content to AudioData
 		IsReady:   audioOverview.Status != statusCreating, // Infer from Status
 	}
 	return result, nil
 }
 
 // createAudioOverviewDirectRPC uses direct RPC calls (original implementation)
-func (c *Client) createAudioOverviewDirectRPC(projectID string, instructions string) (*AudioOverviewResult, error) {
+func (c *Client) createAudioOverviewDirectRPC(projectID, instructions string) (*AudioOverviewResult, error) {
 	resp, err := c.rpc.Do(rpc.Call{
 		ID: rpc.RPCCreateAudioOverview,
 		Args: []interface{}{
@@ -851,9 +854,9 @@ func (c *Client) GetAudioOverview(projectID string) (*AudioOverviewResult, error
 	// Note: pb.AudioOverview has different fields than expected, so we map what's available
 	result := &AudioOverviewResult{
 		ProjectID: projectID,
-		AudioID:   "",                                 // Not available in pb.AudioOverview
-		Title:     "",                                 // Not available in pb.AudioOverview
-		AudioData: audioOverview.Content,              // Map Content to AudioData
+		AudioID:   "",                                     // Not available in pb.AudioOverview
+		Title:     "",                                     // Not available in pb.AudioOverview
+		AudioData: audioOverview.Content,                  // Map Content to AudioData
 		IsReady:   audioOverview.Status != statusCreating, // Infer from Status
 	}
 	return result, nil
@@ -955,7 +958,7 @@ type VideoOverviewResult struct {
 	IsReady   bool
 }
 
-func (c *Client) CreateVideoOverview(projectID string, instructions string) (*VideoOverviewResult, error) {
+func (c *Client) CreateVideoOverview(projectID, instructions string) (*VideoOverviewResult, error) {
 	if projectID == "" {
 		return nil, fmt.Errorf("project ID required")
 	}
@@ -1110,7 +1113,8 @@ func (r *AudioOverviewResult) SaveAudioToFile(filename string) error {
 		return fmt.Errorf("decode audio data: %w", err)
 	}
 
-	if err := os.WriteFile(filename, audioBytes, 0644); err != nil {
+	//nolint:gosec // user-requested output file should be readable
+	if err := os.WriteFile(filename, audioBytes, 0o644); err != nil {
 		return fmt.Errorf("write audio file: %w", err)
 	}
 
@@ -1577,6 +1581,7 @@ func (r *VideoOverviewResult) downloadVideoFromURL(url, filename string) error {
 		return fmt.Errorf("download failed with status: %s (may need authentication cookies)", resp.Status)
 	}
 
+	//nolint:gosec // file path is user-provided output
 	file, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("create video file: %w", err)
@@ -1600,7 +1605,8 @@ func (r *VideoOverviewResult) saveBase64VideoToFile(base64Data, filename string)
 		return fmt.Errorf("decode video data: %w", err)
 	}
 
-	if err := os.WriteFile(filename, videoBytes, 0644); err != nil {
+	//nolint:gosec // user-requested output file should be readable
+	if err := os.WriteFile(filename, videoBytes, 0o644); err != nil {
 		return fmt.Errorf("write video file: %w", err)
 	}
 
@@ -1666,6 +1672,7 @@ func (c *Client) DownloadVideoWithAuth(videoURL, filename string) error {
 	}
 
 	// Create output file
+	//nolint:gosec // file path is user-provided output
 	file, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("create video file: %w", err)
@@ -1913,9 +1920,9 @@ func (c *Client) StartSection(projectID string) (*pb.StartSectionResponse, error
 	return section, nil
 }
 
-func (c *Client) GenerateFreeFormStreamed(projectID string, prompt string, sourceIDs []string) (*pb.GenerateFreeFormStreamedResponse, error) {
+func (c *Client) GenerateFreeFormStreamed(projectID, prompt string, sourceIDs []string) (*pb.GenerateFreeFormStreamedResponse, error) {
 	// Check if we should skip sources (useful for testing or when project is inaccessible)
-skipSources := os.Getenv("NLM_SKIP_SOURCES") == envTrue
+	skipSources := os.Getenv("NLM_SKIP_SOURCES") == envTrue
 
 	// If no source IDs provided and not skipping, try to get all sources from the project
 	if len(sourceIDs) == 0 && !skipSources {
@@ -1962,9 +1969,9 @@ skipSources := os.Getenv("NLM_SKIP_SOURCES") == envTrue
 }
 
 // GenerateFreeFormStreamedWithCallback streams the response and calls the callback for each chunk
-func (c *Client) GenerateFreeFormStreamedWithCallback(projectID string, prompt string, sourceIDs []string, callback func(chunk string) bool) error {
+func (c *Client) GenerateFreeFormStreamedWithCallback(projectID, prompt string, sourceIDs []string, callback func(chunk string) bool) error {
 	// Check if we should skip sources (useful for testing or when project is inaccessible)
-skipSources := os.Getenv("NLM_SKIP_SOURCES") == envTrue
+	skipSources := os.Getenv("NLM_SKIP_SOURCES") == envTrue
 
 	// If no source IDs provided and not skipping, try to get all sources from the project
 	if len(sourceIDs) == 0 && !skipSources {
@@ -2083,6 +2090,7 @@ type ShareAudioResult struct {
 // ShareAudio shares an audio overview with optional public access
 func (c *Client) ShareAudio(projectID string, shareOption ShareOption) (*ShareAudioResult, error) {
 	req := &pb.ShareAudioRequest{
+		//nolint:gosec // shareOption is a bounded enum
 		ShareOptions: []int32{int32(shareOption)},
 		ProjectId:    projectID,
 	}

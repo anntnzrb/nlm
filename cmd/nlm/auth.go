@@ -276,7 +276,7 @@ func persistAuthToDisk(cookies, authToken, profileName string) (string, string, 
 
 	// Create .nlm directory if it doesn't exist
 	nlmDir := filepath.Join(homeDir, ".nlm")
-	if err := os.MkdirAll(nlmDir, 0700); err != nil {
+	if err := os.MkdirAll(nlmDir, 0o700); err != nil {
 		return "", "", fmt.Errorf("create .nlm directory: %w", err)
 	}
 
@@ -288,7 +288,7 @@ func persistAuthToDisk(cookies, authToken, profileName string) (string, string, 
 		profileName,
 	)
 
-	if err := os.WriteFile(envFile, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
 		return "", "", fmt.Errorf("write env file: %w", err)
 	}
 
@@ -302,6 +302,7 @@ func loadStoredEnv() {
 		return
 	}
 
+	//nolint:gosec // env file path is derived from user home
 	data, err := os.ReadFile(filepath.Join(home, ".nlm", "env"))
 	if err != nil {
 		return
@@ -330,7 +331,9 @@ func loadStoredEnv() {
 		if unquoted, err := strconv.Unquote(value); err == nil {
 			value = unquoted
 		}
-		os.Setenv(key, value)
+		if err := os.Setenv(key, value); err != nil {
+			fmt.Fprintf(os.Stderr, "nlm: failed to set %s: %v\n", key, err)
+		}
 	}
 }
 

@@ -45,6 +45,7 @@ func loadNLMCredentials() (authToken, cookies string) {
 	}
 
 	envFile := homeDir + "/.nlm/env"
+	//nolint:gosec // env file path is derived from user home
 	file, err := os.Open(envFile)
 	if err != nil {
 		return "", ""

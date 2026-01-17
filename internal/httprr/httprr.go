@@ -165,6 +165,8 @@ func defaultResponseScrubbers() []func(*bytes.Buffer) error {
 }
 
 // defaultRecordMatcher creates a key for a request based on the notebooklm RPC endpoint
+//
+//nolint:unused // retained for alternate record matching
 func defaultRecordMatcher(req *http.Request) string {
 	// Extract RPC function ID from the request body
 	body, _ := io.ReadAll(req.Body)
@@ -229,6 +231,7 @@ func Open(file string, rt http.RoundTripper) (*RecordReplay, error) {
 
 // creates a new record-mode RecordReplay in the file.
 func create(file string, rt http.RoundTripper) (*RecordReplay, error) {
+	//nolint:gosec // file path is user-provided for recording/replay
 	f, err := os.Create(file)
 	if err != nil {
 		return nil, err
@@ -259,6 +262,7 @@ func open(file string, rt http.RoundTripper) (*RecordReplay, error) {
 
 	// Check if file is compressed
 	if strings.HasSuffix(file, ".gz") {
+		//nolint:gosec // file path is user-provided for recording/replay
 		f, err := os.Open(file)
 		if err != nil {
 			return nil, err
@@ -280,6 +284,7 @@ func open(file string, rt http.RoundTripper) (*RecordReplay, error) {
 			return nil, err
 		}
 	} else {
+		//nolint:gosec // file path is user-provided for recording/replay
 		bdata, err = os.ReadFile(file)
 		if err != nil {
 			return nil, err
@@ -412,6 +417,8 @@ func (rr *RecordReplay) replayRoundTrip(req *http.Request) (*http.Response, erro
 }
 
 // recordRequest records an HTTP interaction (legacy compatibility)
+//
+//nolint:unused // retained for alternate record strategy
 func (rt *RecordReplay) recordRequest(req *http.Request) (*http.Response, error) {
 	return rt.recordRoundTrip(req)
 }
@@ -507,11 +514,15 @@ func (rr *RecordReplay) Close() error {
 }
 
 // saveRecording saves a recording to disk (legacy compatibility)
+//
+//nolint:unused // retained for alternate record strategy
 func (rt *RecordReplay) saveRecording(key string, recording interface{}) {
 	// Legacy compatibility - no-op
 }
 
 // loadRecordings loads all recordings for a key from disk (legacy compatibility)
+//
+//nolint:unused // retained for alternate record strategy
 func (rt *RecordReplay) loadRecordings(key string) ([]interface{}, error) {
 	return nil, fmt.Errorf("legacy method not implemented")
 }
@@ -555,7 +566,7 @@ func OpenForTest(t *testing.T, rt http.RoundTripper) (*RecordReplay, error) {
 	filename := filepath.Join("testdata", testName+".httprr")
 
 	// Ensure testdata directory exists
-	if err := os.MkdirAll("testdata", 0o755); err != nil {
+	if err := os.MkdirAll("testdata", 0o700); err != nil {
 		return nil, fmt.Errorf("httprr: failed to create testdata directory: %w", err)
 	}
 

@@ -247,7 +247,7 @@ func (ba *BrowserAuth) scanProfilesForDomain(targetDomain string) ([]ProfileInfo
 }
 
 // scanBrowserProfiles scans a browser's profile directory for valid profiles
-func scanBrowserProfiles(profilePath, browserName string, targetDomain string) ([]ProfileInfo, error) {
+func scanBrowserProfiles(profilePath, browserName, targetDomain string) ([]ProfileInfo, error) {
 	var profiles []ProfileInfo
 	entries, err := os.ReadDir(profilePath)
 	if err != nil {
@@ -678,6 +678,8 @@ func (ba *BrowserAuth) GetAuth(opts ...Option) (token, cookies string, err error
 }
 
 // copyProfileData first resolves the profile name to a path and then calls copyProfileDataFromPath
+//
+//nolint:unused // retained for alternate profile copy strategy
 func (ba *BrowserAuth) copyProfileData(profileName string) error {
 	// If profileName is "Default" and it doesn't exist, find the most recently used profile
 	profilePath := getProfilePath()
@@ -725,19 +727,19 @@ func (ba *BrowserAuth) copyProfileDataFromPath(sourceDir string) error {
 
 	// Create Default profile directory
 	defaultDir := filepath.Join(ba.tempDir, defaultProfileName)
-	if err := os.MkdirAll(defaultDir, 0755); err != nil {
+	if err := os.MkdirAll(defaultDir, 0o750); err != nil {
 		return fmt.Errorf("create profile dir: %w", err)
 	}
 
 	// Copy only essential files for authentication (not entire profile)
 	essentialFiles := []string{
-		"Cookies",           // Authentication cookies
-		"Cookies-journal",   // Cookie database journal
-		"Login Data",        // Saved login information
+		"Cookies",            // Authentication cookies
+		"Cookies-journal",    // Cookie database journal
+		"Login Data",         // Saved login information
 		"Login Data-journal", // Login database journal
-		"Web Data",          // Form data and autofill
-		"Web Data-journal",  // Web data journal
-		"Preferences",       // Browser preferences
+		"Web Data",           // Form data and autofill
+		"Web Data-journal",   // Web data journal
+		"Preferences",        // Browser preferences
 		"Secure Preferences", // Secure browser settings
 	}
 
@@ -766,7 +768,7 @@ func (ba *BrowserAuth) copyProfileDataFromPath(sourceDir string) error {
 
 	// Create minimal Local State file
 	localState := `{"os_crypt":{"encrypted_key":""}}`
-	if err := os.WriteFile(filepath.Join(ba.tempDir, "Local State"), []byte(localState), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(ba.tempDir, "Local State"), []byte(localState), 0o600); err != nil {
 		return fmt.Errorf("write local state: %w", err)
 	}
 
@@ -774,6 +776,8 @@ func (ba *BrowserAuth) copyProfileDataFromPath(sourceDir string) error {
 }
 
 // findMostRecentProfile finds the most recently used profile in the Chrome profile directory
+//
+//nolint:unused // retained for alternate profile selection strategy
 func findMostRecentProfile(profilePath string) string {
 	entries, err := os.ReadDir(profilePath)
 	if err != nil {
@@ -826,6 +830,7 @@ func findMostRecentProfile(profilePath string) string {
 	return mostRecent
 }
 
+//nolint:unused // retained for direct Chrome exec path
 func (ba *BrowserAuth) startChromeExec() (string, error) {
 	debugPort := "9222"
 	debugURL := fmt.Sprintf("http://localhost:%s", debugPort)
@@ -840,6 +845,7 @@ func (ba *BrowserAuth) startChromeExec() (string, error) {
 		fmt.Printf("Using profile: %s\n", ba.tempDir)
 	}
 
+	//nolint:gosec // fixed binary and flags for local browser auth
 	ba.chromeCmd = exec.Command(chromePath,
 		fmt.Sprintf("--remote-debugging-port=%s", debugPort),
 		fmt.Sprintf("--user-data-dir=%s", ba.tempDir),
@@ -867,6 +873,7 @@ func (ba *BrowserAuth) startChromeExec() (string, error) {
 	return debugURL, nil
 }
 
+//nolint:unused // retained for direct Chrome exec path
 func (ba *BrowserAuth) waitForDebugger(debugURL string) error {
 	fmt.Println("Waiting for Chrome debugger...")
 
@@ -881,7 +888,7 @@ func (ba *BrowserAuth) waitForDebugger(debugURL string) error {
 		case <-ticker.C:
 			resp, err := http.Get(debugURL + "/json/version")
 			if err == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 				fmt.Println("Chrome debugger ready")
 				return nil
 			}
@@ -905,6 +912,7 @@ func (ba *BrowserAuth) cleanup() {
 }
 
 func copyFile(src, dst string) error {
+	//nolint:gosec // paths come from existing profile directory
 	source, err := os.Open(src)
 	if err != nil {
 		return err
@@ -913,6 +921,7 @@ func copyFile(src, dst string) error {
 		_ = source.Close()
 	}()
 
+	//nolint:gosec // paths come from existing profile directory
 	destination, err := os.Create(dst)
 	if err != nil {
 		return err
@@ -926,11 +935,15 @@ func copyFile(src, dst string) error {
 }
 
 // copyDirectoryRecursive recursively copies all files and subdirectories from src to dst
+//
+//nolint:unused // retained for full profile copy fallback
 func copyDirectoryRecursive(src, dst string, debug bool) error {
 	return copyDirectoryRecursiveWithCount(src, dst, debug, nil, nil)
 }
 
 // copyDirectoryRecursiveWithCount recursively copies with file counting
+//
+//nolint:unused // retained for full profile copy fallback
 func copyDirectoryRecursiveWithCount(src, dst string, debug bool, fileCount, dirCount *int) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
@@ -943,7 +956,7 @@ func copyDirectoryRecursiveWithCount(src, dst string, debug bool, fileCount, dir
 
 		if entry.IsDir() {
 			// Create destination directory
-			if err := os.MkdirAll(dstPath, 0755); err != nil {
+			if err := os.MkdirAll(dstPath, 0o750); err != nil {
 				if debug {
 					fmt.Printf("Failed to create directory %s: %v\n", dstPath, err)
 				}

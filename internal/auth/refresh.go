@@ -192,7 +192,9 @@ func ExtractGSessionID(cookies string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("fetch page: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read response
 	body, err := io.ReadAll(resp.Body)
@@ -250,7 +252,7 @@ func DefaultAutoRefreshConfig() AutoRefreshConfig {
 }
 
 // StartAutoRefresh starts automatic credential refresh in the background
-func StartAutoRefresh(cookies string, gsessionID string, config AutoRefreshConfig) error {
+func StartAutoRefresh(cookies, gsessionID string, config AutoRefreshConfig) error {
 	if !config.Enabled {
 		return nil
 	}
@@ -319,6 +321,7 @@ func GetStoredToken() (string, error) {
 	}
 
 	envFile := filepath.Join(homeDir, ".nlm", "env")
+	//nolint:gosec // env file path is derived from user home
 	data, err := os.ReadFile(envFile)
 	if err != nil {
 		return "", err
@@ -346,6 +349,7 @@ func GetStoredCookies() (string, error) {
 	}
 
 	envFile := filepath.Join(homeDir, ".nlm", "env")
+	//nolint:gosec // env file path is derived from user home
 	data, err := os.ReadFile(envFile)
 	if err != nil {
 		return "", err

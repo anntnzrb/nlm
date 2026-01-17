@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+//nolint:unused // retained for future browser detection enhancements
 func detectSafari(debug bool) Browser {
 	for _, browser := range macOSBrowserPaths {
 		if browser.Type != BrowserSafari {
@@ -30,7 +31,9 @@ func detectSafari(debug bool) Browser {
 	return Browser{Type: BrowserUnknown}
 }
 
+//nolint:unused // retained for future browser detection enhancements
 func getSafariVersion() string {
+	//nolint:gosec // fixed command and args for version detection
 	cmd := exec.Command("defaults", "read", "/Applications/Safari.app/Contents/Info.plist", "CFBundleShortVersionString")
 	out, err := cmd.Output()
 	if err != nil {
@@ -40,10 +43,12 @@ func getSafariVersion() string {
 }
 
 type SafariAutomation struct {
+	//nolint:unused // retained for future debug output
 	debug  bool
 	script string
 }
 
+//nolint:unused // retained for future browser automation enhancements
 func newSafariAutomation(debug bool) *SafariAutomation {
 	return &SafariAutomation{
 		debug: debug,
@@ -70,6 +75,7 @@ end tell
 }
 
 func (sa *SafariAutomation) Execute() (token, cookies string, err error) {
+	//nolint:gosec // osascript used for fixed AppleScript interaction
 	cmd := exec.Command("osascript", "-e", sa.script)
 	out, err := cmd.Output()
 	if err != nil {

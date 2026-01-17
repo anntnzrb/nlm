@@ -156,6 +156,8 @@ func ClearAPIParamsCache() {
 }
 
 // Helper to check if a string contains NotebookLM-related content
+//
+//nolint:unused // retained for future HTML checks
 func isNotebookLMPage(html string) bool {
 	return strings.Contains(html, "notebooklm") || strings.Contains(html, "LabsTailwind")
 }

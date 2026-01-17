@@ -191,7 +191,6 @@ func TestDecodeResponse(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			if tc.inputFile != "" {
 				content, err := testdata.ReadFile("testdata/" + tc.inputFile)
 				if err != nil {
@@ -213,11 +212,12 @@ func TestDecodeResponse(t *testing.T) {
 			}
 
 			// Check error
-			if tc.err != nil && err == nil {
+			switch {
+			case tc.err != nil && err == nil:
 				t.Errorf("Expected error %v, got nil", tc.err)
-			} else if tc.err == nil && err != nil {
+			case tc.err == nil && err != nil:
 				t.Errorf("Expected no error, got %v", err)
-			} else if tc.err != nil && err != nil && tc.err.Error() != err.Error() {
+			case tc.err != nil && err != nil && tc.err.Error() != err.Error():
 				t.Errorf("Expected error %v, got %v", tc.err, err)
 			}
 

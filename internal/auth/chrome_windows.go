@@ -25,6 +25,7 @@ func detectChrome(debug bool) Browser {
 }
 
 func getChromeVersion(path string) string {
+	//nolint:gosec // fixed binary path and args for version detection
 	cmd := exec.Command(path, "--version")
 	out, err := cmd.Output()
 	if err != nil {

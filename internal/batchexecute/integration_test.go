@@ -241,7 +241,7 @@ func TestCustomErrorCodeExtension(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, ")]}'\n%d", customCode)
+		_, _ = fmt.Fprintf(w, ")]}'\n%d", customCode)
 	}))
 	defer server.Close()
 
