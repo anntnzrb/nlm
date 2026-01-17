@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+//nolint:unused // retained for future browser detection enhancements
 func detectChrome(debug bool) Browser {
 	// Try standard Chrome first
 	if path, err := exec.LookPath("google-chrome"); err == nil {
@@ -35,6 +36,7 @@ func detectChrome(debug bool) Browser {
 	return Browser{Type: BrowserUnknown}
 }
 
+//nolint:unused // retained for future browser detection enhancements
 func getChromeVersion(path string) string {
 	//nolint:gosec // fixed binary path and args for version detection
 	cmd := exec.Command(path, "--version")
