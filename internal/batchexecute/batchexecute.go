@@ -19,6 +19,11 @@ import (
 // ErrUnauthorized represent an unauthorized request.
 var ErrUnauthorized = errors.New("unauthorized")
 
+const (
+	rpcIndexGeneric = "generic"
+	rpcTypeWRB      = "wrb.fr"
+)
+
 // sanitizeJSON fixes invalid escape sequences in JSON strings.
 func sanitizeJSON(input string) string {
 	// Fix invalid escape sequences inside JSON strings
@@ -308,7 +313,7 @@ func (c *Client) Execute(rpcs []RPC) (*Response, error) {
 
 		// Check if response status is retryable
 		if isRetryableStatus(resp.StatusCode) && attempt < c.config.MaxRetries {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			lastErr = fmt.Errorf("server returned status %d", resp.StatusCode)
 			continue
 		}
@@ -320,7 +325,9 @@ func (c *Client) Execute(rpcs []RPC) (*Response, error) {
 	if resp == nil {
 		return nil, fmt.Errorf("all retry attempts failed: %w", lastErr)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -441,7 +448,7 @@ func decodeResponseWithOptions(raw string, allowChunked bool) ([]Response, error
 			continue
 		}
 		rpcType, ok := rpcData[0].(string)
-		if !ok || rpcType != "wrb.fr" {
+		if !ok || rpcType != rpcTypeWRB {
 			continue
 		}
 
@@ -481,7 +488,7 @@ func decodeResponseWithOptions(raw string, allowChunked bool) ([]Response, error
 			resp.Data = normalizeResponseData(resp.Data)
 		}
 
-		if rpcData[6] == "generic" {
+		if rpcData[6] == rpcIndexGeneric {
 			resp.Index = 0
 		} else if indexStr, ok := rpcData[6].(string); ok {
 			resp.Index, _ = strconv.Atoi(indexStr)
@@ -582,7 +589,7 @@ func decodeChunkedResponse(r io.Reader) ([]Response, error) {
 				continue
 			}
 			rpcType, ok := rpcData[0].(string)
-			if !ok || rpcType != "wrb.fr" {
+			if !ok || rpcType != rpcTypeWRB {
 				continue
 			}
 
@@ -608,7 +615,7 @@ func decodeChunkedResponse(r io.Reader) ([]Response, error) {
 				resp.Data = normalizeResponseData(resp.Data)
 			}
 
-			if rpcData[6] == "generic" {
+			if rpcData[6] == rpcIndexGeneric {
 				resp.Index = 0
 			} else if indexStr, ok := rpcData[6].(string); ok {
 				resp.Index, _ = strconv.Atoi(indexStr)

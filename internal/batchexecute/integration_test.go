@@ -74,7 +74,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprint(w, tt.responseBody)
+				_, _ = fmt.Fprint(w, tt.responseBody)
 			}))
 			defer server.Close()
 
@@ -177,7 +177,7 @@ func TestHTTPStatusErrorHandling(t *testing.T) {
 			// Create a test server that returns the specified HTTP status
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				fmt.Fprint(w, "Error response")
+				_, _ = fmt.Fprint(w, "Error response")
 			}))
 			defer server.Close()
 

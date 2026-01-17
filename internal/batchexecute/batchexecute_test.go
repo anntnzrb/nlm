@@ -251,7 +251,7 @@ func TestExecute(t *testing.T) {
 
 		w.WriteHeader(http.StatusOK)
 		// Return realistic response format
-		fmt.Fprintf(w, `)]}'
+		_, _ = fmt.Fprintf(w, `)]}'
 
 [["wrb.fr","VUsiyb","[null,null,[3,null,\"fec1780c-5a14-4f07-8ee6-f8c3ee2930fa\",\"nbname2\",null,true],null,[false]]",null,null,null,"generic"]]`)
 	}))
@@ -302,7 +302,7 @@ func TestChunkedResponses(t *testing.T) {
 
 		w.WriteHeader(http.StatusOK)
 		// Return realistic chunked response format
-		fmt.Fprintf(w, `)]}'
+		_, _ = fmt.Fprintf(w, `)]}'
 
 145
 [["wrb.fr","VUsiyb","[null,null,[3,null,\"fec1780c-5a14-4f07-8ee6-f8c3ee2930fa\",\"nbname2\",null,true],null,[false]]",null,null,null,"generic"]]

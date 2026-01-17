@@ -86,10 +86,12 @@ func TestExecuteWithRetry(t *testing.T) {
 	t.Run("successful on first attempt", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`)]}'
+			if _, err := w.Write([]byte(`)]}'
 123
 [[["wrb.fr","test","{\"result\":\"success\"}",null,null,null,"generic"]]]
-`))
+`)); err != nil {
+				t.Errorf("failed to write response: %v", err)
+			}
 		}))
 		defer server.Close()
 
@@ -120,10 +122,12 @@ func TestExecuteWithRetry(t *testing.T) {
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`)]}'
+			if _, err := w.Write([]byte(`)]}'
 123
 [[["wrb.fr","test","{\"result\":\"success\"}",null,null,null,"generic"]]]
-`))
+`)); err != nil {
+				t.Errorf("failed to write response: %v", err)
+			}
 		}))
 		defer server.Close()
 

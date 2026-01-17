@@ -48,7 +48,7 @@ func parseChunkedResponse(r io.Reader) ([]Response, error) {
 		// Check if there's an additional empty line and consume it
 		nextByte, err := br.Peek(1)
 		if err == nil && len(nextByte) > 0 && nextByte[0] == '\n' {
-			br.ReadByte() // Consume the extra newline
+			_, _ = br.ReadByte() // Consume the extra newline
 			fmt.Printf("DEBUG: Discarded extra newline after prefix\n")
 		}
 	}
@@ -95,7 +95,7 @@ func parseChunkedResponse(r io.Reader) ([]Response, error) {
 				switch {
 				case strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "["):
 					chunks = append(chunks, line)
-				case strings.HasPrefix(trimmed, "wrb.fr"):
+				case strings.HasPrefix(trimmed, rpcTypeWRB):
 					// It might be a direct RPC response without proper JSON format
 					chunks = append(chunks, "["+line+"]")
 				default:
@@ -179,13 +179,13 @@ func extractWRBResponse(chunk string) *Response {
 
 	// If JSON parsing fails, try manual extraction
 	// Try to extract the ID (comes after "wrb.fr")
-	idMatch := strings.Index(chunk, "wrb.fr")
+	idMatch := strings.Index(chunk, rpcTypeWRB)
 	if idMatch < 0 {
 		return nil
 	}
 
 	// Skip past "wrb.fr" and find next quotes
-	idStart := idMatch + 7 // length of "wrb.fr" + 1 for a likely comma or quote
+	idStart := idMatch + len(rpcTypeWRB) + 1 // length of rpcTypeWRB + 1 for a likely comma or quote
 	for idStart < len(chunk) && (chunk[idStart] == ',' || chunk[idStart] == '"' || chunk[idStart] == ' ') {
 		idStart++
 	}
@@ -313,7 +313,7 @@ func processChunks(chunks []string) ([]Response, error) {
 			continue
 		}
 		// Check if this looks like a pure numeric response (potential error code)
-		if len(trimmed) <= 10 && isNumeric(trimmed) && !strings.Contains(trimmed, "wrb.fr") {
+		if len(trimmed) <= 10 && isNumeric(trimmed) && !strings.Contains(trimmed, rpcTypeWRB) {
 			// Create a synthetic response with the numeric data
 			// This allows our error handling system to process it properly
 			return []Response{
@@ -350,7 +350,7 @@ func processChunks(chunks []string) ([]Response, error) {
 			var singleData []interface{}
 			if err := json.Unmarshal([]byte(chunk), &singleData); err != nil {
 				// If it still fails, check if it contains wrb.fr and try to manually extract
-				if strings.Contains(chunk, "wrb.fr") {
+				if strings.Contains(chunk, rpcTypeWRB) {
 					// Manually construct a response
 					fmt.Printf("Attempting to manually extract wrb.fr response from: %s\n", chunk)
 					if resp := extractWRBResponse(chunk); resp != nil {
@@ -391,7 +391,7 @@ func extractResponses(data [][]interface{}) ([]Response, error) {
 
 		// Check if this is a valid RPC response
 		rpcType, ok := rpcData[0].(string)
-		if !ok || rpcType != "wrb.fr" {
+		if !ok || rpcType != rpcTypeWRB {
 			continue
 		}
 
@@ -424,7 +424,7 @@ func extractResponses(data [][]interface{}) ([]Response, error) {
 
 		// Extract the response index
 		if len(rpcData) > 6 {
-			if rpcData[6] == "generic" {
+			if rpcData[6] == rpcIndexGeneric {
 				resp.Index = 0
 			} else if indexStr, ok := rpcData[6].(string); ok {
 				index, err := strconv.Atoi(indexStr)
