@@ -23,6 +23,23 @@ func TestGetAPIParamsEnvOverride(t *testing.T) {
 	}
 }
 
+func TestGetAPIParamsDefaultFallback(t *testing.T) {
+	paramsMutex.Lock()
+	cachedParams = nil
+	paramsMutex.Unlock()
+
+	t.Setenv("NLM_BUILD_VERSION", "")
+	t.Setenv("NLM_SESSION_ID", "")
+
+	params := GetAPIParams("")
+	if params.BuildVersion != DefaultBuildVersion {
+		t.Fatalf("expected default build version, got %q", params.BuildVersion)
+	}
+	if params.SessionID != DefaultSessionID {
+		t.Fatalf("expected default session id, got %q", params.SessionID)
+	}
+}
+
 func TestFetchAPIParamsFromPage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
