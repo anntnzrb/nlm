@@ -213,10 +213,8 @@ func TestHTTPStatusErrorHandling(t *testing.T) {
 				} else {
 					t.Errorf("Expected BatchExecuteError but got %T: %v", err, err)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got: %v", err)
-				}
+			} else if err != nil {
+				t.Errorf("Expected no error but got: %v", err)
 			}
 		})
 	}

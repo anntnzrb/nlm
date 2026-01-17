@@ -220,7 +220,7 @@ func Open(file string, rt http.RoundTripper) (*RecordReplay, error) {
 	// Check if a compressed version exists
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		if _, err := os.Stat(file + ".gz"); err == nil {
-			file = file + ".gz"
+			file += ".gz"
 		}
 	}
 

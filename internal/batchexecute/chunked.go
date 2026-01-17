@@ -87,16 +87,18 @@ func parseChunkedResponse(r io.Reader) ([]Response, error) {
 
 		// If we're not currently collecting a chunk, this line should be a chunk length
 		if !collecting {
-			size, err := strconv.Atoi(strings.TrimSpace(line))
+			trimmed := strings.TrimSpace(line)
+			size, err := strconv.Atoi(trimmed)
 			if err != nil {
 				// If not a number, it might be direct JSON data
 				// Check if it looks like JSON
-				if strings.HasPrefix(strings.TrimSpace(line), "{") || strings.HasPrefix(strings.TrimSpace(line), "[") {
+				switch {
+				case strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "["):
 					chunks = append(chunks, line)
-				} else if strings.HasPrefix(strings.TrimSpace(line), "wrb.fr") {
+				case strings.HasPrefix(trimmed, "wrb.fr"):
 					// It might be a direct RPC response without proper JSON format
 					chunks = append(chunks, "["+line+"]")
-				} else {
+				default:
 					// Fallback: treat as a potential response chunk anyway
 					chunks = append(chunks, line)
 				}

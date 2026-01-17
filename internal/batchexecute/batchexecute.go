@@ -121,13 +121,14 @@ func (c *Client) Do(rpc RPC) (*Response, error) {
 
 // maskSensitiveValue masks sensitive values like tokens for debug output
 func maskSensitiveValue(value string) string {
-	if len(value) <= 8 {
+	switch {
+	case len(value) <= 8:
 		return strings.Repeat("*", len(value))
-	} else if len(value) <= 16 {
+	case len(value) <= 16:
 		start := value[:2]
 		end := value[len(value)-2:]
 		return start + strings.Repeat("*", len(value)-4) + end
-	} else {
+	default:
 		start := value[:3]
 		end := value[len(value)-3:]
 		return start + strings.Repeat("*", len(value)-6) + end
@@ -215,22 +216,7 @@ func (c *Client) Execute(rpcs []RPC) (*Response, error) {
 
 	if c.config.Debug {
 		// Safely display auth token with conservative masking
-		token := c.config.AuthToken
-		var tokenDisplay string
-		if len(token) <= 8 {
-			// For very short tokens, mask completely
-			tokenDisplay = strings.Repeat("*", len(token))
-		} else if len(token) <= 16 {
-			// For short tokens, show first 2 and last 2 chars
-			start := token[:2]
-			end := token[len(token)-2:]
-			tokenDisplay = start + strings.Repeat("*", len(token)-4) + end
-		} else {
-			// For long tokens, show first 3 and last 3 chars
-			start := token[:3]
-			end := token[len(token)-3:]
-			tokenDisplay = start + strings.Repeat("*", len(token)-6) + end
-		}
+		tokenDisplay := maskSensitiveValue(c.config.AuthToken)
 		fmt.Printf("\nAuth Token: %s\n", tokenDisplay)
 
 		// Mask auth token in request body display
@@ -662,7 +648,7 @@ func completeChunk(reader *bufio.Reader, chunk []byte) []byte {
 		}
 		extraData = append(extraData, buf[:n]...)
 
-		fullChunk := append(chunk, extraData...)
+		fullChunk := append(append([]byte{}, chunk...), extraData...)
 		if err := json.Unmarshal(fullChunk, &testBatch); err == nil {
 			return fullChunk
 		}
@@ -672,7 +658,7 @@ func completeChunk(reader *bufio.Reader, chunk []byte) []byte {
 		return chunk
 	}
 
-	fullData := append(chunk, extraData...)
+	fullData := append(append([]byte{}, chunk...), extraData...)
 	decoder := json.NewDecoder(strings.NewReader(string(fullData)))
 	var firstJSON [][]interface{}
 	if err := decoder.Decode(&firstJSON); err == nil {

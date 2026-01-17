@@ -19,10 +19,12 @@ func TestMain(m *testing.M) {
 	if err := cmd.Run(); err != nil {
 		panic("failed to build nlm for testing: " + err.Error())
 	}
-	defer os.Remove("nlm_test")
 
 	// Run tests
 	code := m.Run()
+	if err := os.Remove("nlm_test"); err != nil {
+		panic("failed to remove nlm_test: " + err.Error())
+	}
 	os.Exit(code)
 }
 
