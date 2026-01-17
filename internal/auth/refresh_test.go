@@ -56,3 +56,9 @@ func TestExtractCookieValue(t *testing.T) {
 		})
 	}
 }
+
+func TestNewRefreshClientMissingSAPISID(t *testing.T) {
+	if _, err := NewRefreshClient("a=1"); err == nil {
+		t.Fatalf("expected error when SAPISID is missing")
+	}
+}

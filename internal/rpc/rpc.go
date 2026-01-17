@@ -20,6 +20,8 @@ const (
 	DefaultSessionID    = "-8913782897795119716"
 )
 
+var notebookLMURL = "https://notebooklm.google.com/"
+
 // APIParams holds dynamically extracted API parameters
 type APIParams struct {
 	BuildVersion string // bl parameter
@@ -68,7 +70,7 @@ func GetAPIParams(cookies string) *APIParams {
 
 // fetchAPIParamsFromPage extracts bl and f.sid from the NotebookLM HTML page
 func fetchAPIParamsFromPage(cookies string) *APIParams {
-	req, err := http.NewRequest("GET", "https://notebooklm.google.com/", nil)
+	req, err := http.NewRequest("GET", notebookLMURL, nil)
 	if err != nil {
 		return nil
 	}
