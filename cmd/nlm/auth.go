@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -14,6 +15,16 @@ import (
 	"github.com/tmc/nlm/internal/auth"
 	"golang.org/x/term"
 )
+
+const (
+	helpFlag  = "--help"
+	helpShort = "-h"
+	helpAlt   = "-help"
+	helpCmd   = "help"
+	loginArg  = "login"
+)
+
+var errHelpShown = errors.New("help shown")
 
 // maskProfileName masks sensitive profile names in debug output
 func maskProfileName(profile string) string {
@@ -80,7 +91,7 @@ func parseAuthFlags(args []string) (*AuthOptions, []string, error) {
 	// Filter out the 'login' argument if present
 	filteredArgs := make([]string, 0, len(args))
 	for _, arg := range args {
-		if arg != "login" {
+		if arg != loginArg {
 			filteredArgs = append(filteredArgs, arg)
 		}
 	}
@@ -94,7 +105,7 @@ func parseAuthFlags(args []string) (*AuthOptions, []string, error) {
 	// If help is requested, show usage and return nil
 	if opts.Help {
 		authFlags.Usage()
-		return nil, nil, fmt.Errorf("help shown")
+		return nil, nil, errHelpShown
 	}
 
 	// Remaining arguments after flag parsing
@@ -120,9 +131,11 @@ func parseAuthFlags(args []string) (*AuthOptions, []string, error) {
 func handleAuth(args []string, debug bool) (string, string, error) {
 	// Check if help flag is present directly
 	for _, arg := range args {
-		if arg == "-h" || arg == "--help" || arg == "-help" || arg == "help" {
+		if arg == helpShort || arg == helpFlag || arg == helpAlt || arg == helpCmd {
 			// Parse auth-specific flags which will display help
-			parseAuthFlags([]string{"--help"})
+			if _, _, err := parseAuthFlags([]string{helpFlag}); err != nil && !errors.Is(err, errHelpShown) {
+				return "", "", fmt.Errorf("error parsing auth flags: %w", err)
+			}
 			return "", "", nil // Help was shown, exit gracefully
 		}
 	}
@@ -136,7 +149,7 @@ func handleAuth(args []string, debug bool) (string, string, error) {
 	// Look for 'login' command which forces browser auth
 	forceBrowser := false
 	for _, arg := range args {
-		if arg == "login" {
+		if arg == loginArg {
 			forceBrowser = true
 			if debug {
 				fmt.Fprintf(os.Stderr, "Found 'login' command, forcing browser authentication\n")
@@ -172,7 +185,7 @@ func handleAuth(args []string, debug bool) (string, string, error) {
 	// Check for login subcommand which explicitly indicates browser auth
 	isLoginCommand := false
 	for _, arg := range args {
-		if arg == "login" {
+		if arg == loginArg {
 			isLoginCommand = true
 			break
 		}
@@ -181,7 +194,7 @@ func handleAuth(args []string, debug bool) (string, string, error) {
 	// Parse auth-specific flags
 	opts, _, err := parseAuthFlags(args)
 	if err != nil {
-		if err.Error() == "help shown" {
+		if errors.Is(err, errHelpShown) {
 			return "", "", nil // Help was shown, exit gracefully
 		}
 		return "", "", fmt.Errorf("error parsing auth flags: %w", err)
@@ -249,7 +262,9 @@ func detectAuthInfo(cmd string) (string, string, error) {
 		return "", "", fmt.Errorf("no auth token found")
 	}
 	authToken := atMatch[1]
-	persistAuthToDisk(cookies, authToken, "")
+	if _, _, err := persistAuthToDisk(cookies, authToken, ""); err != nil {
+		return "", "", err
+	}
 	return authToken, cookies, nil
 }
 

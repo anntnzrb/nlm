@@ -58,7 +58,11 @@ func TestComprehensiveScripts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to create script state: %v", err)
 			}
-			defer state.CloseAndWait(os.Stderr)
+			defer func() {
+				if err := state.CloseAndWait(os.Stderr); err != nil {
+					t.Errorf("failed to close script state: %v", err)
+				}
+			}()
 
 			// Read test file
 			content, err := os.ReadFile(testFile)

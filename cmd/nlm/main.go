@@ -37,6 +37,14 @@ var (
 	skipSources       bool // Skip fetching sources for chat (useful when project is inaccessible)
 )
 
+const (
+	cmdArtifacts  = "artifacts"
+	cmdChatList   = "chat-list"
+	cmdRefresh    = "refresh"
+	unknownValue  = "unknown"
+	untitledTitle = "(untitled)"
+)
+
 // ChatSession represents a persistent chat conversation
 type ChatSession struct {
 	NotebookID string        `json:"notebook_id"`
@@ -299,7 +307,7 @@ func validateArgs(cmd string, args []string) error {
 			fmt.Fprintf(os.Stderr, "usage: nlm share-details <share-id>\n")
 			return fmt.Errorf("invalid arguments")
 		}
-	case "refresh":
+	case cmdRefresh:
 		// refresh command optionally takes -debug flag
 		// Don't validate here, let the command handle its own flags
 	case "generate-guide":
@@ -342,7 +350,7 @@ func validateArgs(cmd string, args []string) error {
 			fmt.Fprintf(os.Stderr, "usage: nlm chat <notebook-id>\n")
 			return fmt.Errorf("invalid arguments")
 		}
-	case "chat-list":
+	case cmdChatList:
 		if len(args) != 0 {
 			fmt.Fprintf(os.Stderr, "usage: nlm chat-list\n")
 			return fmt.Errorf("invalid arguments")
@@ -357,9 +365,9 @@ func validateArgs(cmd string, args []string) error {
 			fmt.Fprintf(os.Stderr, "usage: nlm get-artifact <artifact-id>\n")
 			return fmt.Errorf("invalid arguments")
 		}
-	case "list-artifacts", "artifacts":
+	case "list-artifacts", cmdArtifacts:
 		if len(args) != 1 {
-			if cmd == "artifacts" {
+			if cmd == cmdArtifacts {
 				fmt.Fprintf(os.Stderr, "usage: nlm artifacts <notebook-id>\n")
 			} else {
 				fmt.Fprintf(os.Stderr, "usage: nlm list-artifacts <notebook-id>\n")
@@ -418,10 +426,10 @@ func isValidCommand(cmd string) bool {
 		"sources", "add", "rm-source", "rename-source", "refresh-source", "check-source", "discover-sources",
 		"notes", "new-note", "update-note", "rm-note",
 		"audio-create", "audio-get", "audio-rm", "audio-share", "audio-list", "audio-download", "video-create", "video-list", "video-download",
-		"create-artifact", "get-artifact", "list-artifacts", "artifacts", "rename-artifact", "delete-artifact",
-		"generate-guide", "generate-outline", "generate-section", "generate-magic", "generate-mindmap", "generate-chat", "chat", "chat-list",
+		"create-artifact", "get-artifact", "list-artifacts", cmdArtifacts, "rename-artifact", "delete-artifact",
+		"generate-guide", "generate-outline", "generate-section", "generate-magic", "generate-mindmap", "generate-chat", "chat", cmdChatList,
 		"rephrase", "expand", "summarize", "critique", "brainstorm", "verify", "explain", "outline", "study-guide", "faq", "briefing-doc", "mindmap", "timeline", "toc",
-		"auth", "refresh", "hb", "share", "share-private", "share-details", "feedback",
+		"auth", cmdRefresh, "hb", "share", "share-private", "share-details", "feedback",
 	}
 
 	for _, valid := range validCommands {
@@ -442,11 +450,11 @@ func isAuthCommand(cmd string) bool {
 		return false
 	}
 	// Refresh command manages its own auth
-	if cmd == "refresh" {
+	if cmd == cmdRefresh {
 		return false
 	}
 	// Chat-list just lists local sessions, no auth needed
-	if cmd == "chat-list" {
+	if cmd == cmdChatList {
 		return false
 	}
 	return true
@@ -515,7 +523,7 @@ func run() error {
 	}
 
 	// Handle refresh command
-	if cmd == "refresh" {
+	if cmd == cmdRefresh {
 		return refreshCredentials(debug)
 	}
 
@@ -549,9 +557,9 @@ func run() error {
 	for i := 0; i < 3; i++ {
 		if i > 0 {
 			if i == 1 {
-				fmt.Fprintln(os.Stderr, "nlm: authentication expired, refreshing credentials...")
+				_, _ = fmt.Fprintln(os.Stderr, "nlm: authentication expired, refreshing credentials...")
 			} else {
-				fmt.Fprintln(os.Stderr, "nlm: retrying authentication...")
+				_, _ = fmt.Fprintln(os.Stderr, "nlm: retrying authentication...")
 			}
 			debug = true
 			// Update opts to include debug when retrying auth
@@ -569,7 +577,7 @@ func run() error {
 		cmdErr := runCmd(client, cmd, args...)
 		if cmdErr == nil {
 			if i > 0 {
-				fmt.Fprintln(os.Stderr, "nlm: authentication refreshed successfully")
+				_, _ = fmt.Fprintln(os.Stderr, "nlm: authentication refreshed successfully")
 			}
 			return nil
 		} else if !isAuthenticationError(cmdErr) {
@@ -744,7 +752,7 @@ func runCmd(client *api.Client, cmd string, args ...string) error {
 		err = createArtifact(client, args[0], args[1])
 	case "get-artifact":
 		err = getArtifact(client, args[0])
-	case "list-artifacts", "artifacts":
+	case "list-artifacts", cmdArtifacts:
 		err = listArtifacts(client, args[0])
 	case "rename-artifact":
 		err = renameArtifact(client, args[0], args[1])
@@ -794,7 +802,7 @@ func runCmd(client *api.Client, cmd string, args ...string) error {
 		err = generateFreeFormChat(client, args[0], args[1])
 	case "chat":
 		err = interactiveChat(client, args[0])
-	case "chat-list":
+	case cmdChatList:
 		err = listChatSessions()
 
 	// Sharing operations
@@ -836,7 +844,7 @@ func list(c *api.Client) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "ID\tTITLE\tSOURCES\tLAST UPDATED")
+	_, _ = fmt.Fprintln(w, "ID\tTITLE\tSOURCES\tLAST UPDATED")
 	for i := 0; i < limit; i++ {
 		nb := notebooks[i]
 		// Use backspace to compensate for emoji width
@@ -872,7 +880,7 @@ func create(c *api.Client, title string) error {
 func remove(c *api.Client, id string) error {
 	fmt.Printf("Are you sure you want to delete notebook %s? [y/N] ", id)
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
 		return fmt.Errorf("operation cancelled")
 	}
@@ -887,19 +895,19 @@ func listSources(c *api.Client, notebookID string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "ID\tTITLE\tTYPE\tSTATUS\tLAST UPDATED")
+	_, _ = fmt.Fprintln(w, "ID\tTITLE\tTYPE\tSTATUS\tLAST UPDATED")
 	for _, src := range p.Sources {
 		status := "enabled"
 		if src.Metadata != nil {
 			status = src.Metadata.Status.String()
 		}
 
-		lastUpdated := "unknown"
+		lastUpdated := unknownValue
 		if src.Metadata != nil && src.Metadata.LastModifiedTime != nil {
 			lastUpdated = src.Metadata.LastModifiedTime.AsTime().Format(time.RFC3339)
 		}
 
-		sourceType := "unknown"
+		sourceType := unknownValue
 		if src.Metadata != nil {
 			sourceType = src.Metadata.GetSourceType().String()
 		}
@@ -919,7 +927,7 @@ func addSource(c *api.Client, notebookID, input string) (string, error) {
 	// Handle special input designators
 	switch input {
 	case "-": // stdin
-		fmt.Fprintln(os.Stderr, "Reading from stdin...")
+		_, _ = fmt.Fprintln(os.Stderr, "Reading from stdin...")
 		if mimeType != "" {
 			fmt.Fprintf(os.Stderr, "Using specified MIME type: %s\n", mimeType)
 			return c.AddSourceFromReader(notebookID, os.Stdin, "Pasted Text", mimeType)
@@ -959,7 +967,7 @@ func addSource(c *api.Client, notebookID, input string) (string, error) {
 func removeSource(c *api.Client, notebookID, sourceID string) error {
 	fmt.Printf("Are you sure you want to remove source %s? [y/N] ", sourceID)
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
 		return fmt.Errorf("operation cancelled")
 	}
@@ -1005,7 +1013,7 @@ func updateNote(c *api.Client, notebookID, noteID, content, title string) error 
 func removeNote(c *api.Client, notebookID, noteID string) error {
 	fmt.Printf("Are you sure you want to remove note %s? [y/N] ", noteID)
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
 		return fmt.Errorf("operation cancelled")
 	}
@@ -1030,9 +1038,9 @@ func listNotes(c *api.Client, notebookID string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "ID\tTITLE\tLAST MODIFIED")
+	_, _ = fmt.Fprintln(w, "ID\tTITLE\tLAST MODIFIED")
 	for _, note := range notes {
-		lastModified := "unknown"
+		lastModified := unknownValue
 		if meta := note.GetMetadata(); meta != nil && meta.LastModifiedTime != nil {
 			lastModified = meta.LastModifiedTime.AsTime().Format(time.RFC3339)
 		}
@@ -1043,7 +1051,7 @@ func listNotes(c *api.Client, notebookID string) error {
 		}
 		title := note.Title
 		if title == "" {
-			title = "(untitled)"
+			title = untitledTitle
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\n",
 			noteID,
@@ -1093,7 +1101,7 @@ func getAudioOverview(c *api.Client, projectID string) error {
 func deleteAudioOverview(c *api.Client, notebookID string) error {
 	fmt.Printf("Are you sure you want to delete the audio overview? [y/N] ")
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
 		return fmt.Errorf("operation cancelled")
 	}
@@ -1304,7 +1312,7 @@ func listFeaturedProjects(c *api.Client) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "ID\tTITLE\tDESCRIPTION")
+	_, _ = fmt.Fprintln(w, "ID\tTITLE\tDESCRIPTION")
 
 	for _, project := range resp.Projects {
 		description := ""
@@ -1387,7 +1395,7 @@ func discoverSources(c *api.Client, projectID, query string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "ID\tTITLE\tTYPE\tRELEVANCE")
+	_, _ = fmt.Fprintln(w, "ID\tTITLE\tTYPE\tRELEVANCE")
 
 	for _, source := range resp.Sources {
 		relevance := "Unknown"
@@ -1505,7 +1513,7 @@ func displayArtifacts(artifacts []*pb.Artifact) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "ID\tTYPE\tSTATE\tSOURCES")
+	_, _ = fmt.Fprintln(w, "ID\tTYPE\tSTATE\tSOURCES")
 
 	for _, artifact := range artifacts {
 		sourceCount := fmt.Sprintf("%d", len(artifact.Sources))
@@ -1537,7 +1545,7 @@ func renameArtifact(c *api.Client, artifactID, newTitle string) error {
 func deleteArtifact(c *api.Client, artifactID string) error {
 	fmt.Printf("Are you sure you want to delete artifact %s? [y/N] ", artifactID)
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
 		return fmt.Errorf("operation cancelled")
 	}
@@ -1723,7 +1731,7 @@ func getChatSessionPath(notebookID string) string {
 	}
 
 	nlmDir := filepath.Join(homeDir, ".nlm")
-	os.MkdirAll(nlmDir, 0700) // Ensure directory exists
+	_ = os.MkdirAll(nlmDir, 0700) // Ensure directory exists
 	return filepath.Join(nlmDir, fmt.Sprintf("chat-%s.json", notebookID))
 }
 
@@ -1793,8 +1801,8 @@ func listChatSessions() error {
 	fmt.Println("=" + strings.Repeat("=", 40))
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NOTEBOOK\tMESSAGES\tLAST UPDATED\tCREATED")
-	fmt.Fprintln(w, "--------\t--------\t------------\t-------")
+	_, _ = fmt.Fprintln(w, "NOTEBOOK\tMESSAGES\tLAST UPDATED\tCREATED")
+	_, _ = fmt.Fprintln(w, "--------\t--------\t------------\t-------")
 
 	for _, session := range sessions {
 		lastUpdated := session.UpdatedAt.Format("Jan 2 15:04")
@@ -2203,7 +2211,7 @@ func listAudioOverviews(c *api.Client, notebookID string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "PROJECT\tTITLE\tSTATUS")
+	_, _ = fmt.Fprintln(w, "PROJECT\tTITLE\tSTATUS")
 	for _, audio := range audioOverviews {
 		status := "pending"
 		if audio.IsReady {
@@ -2211,7 +2219,7 @@ func listAudioOverviews(c *api.Client, notebookID string) error {
 		}
 		title := audio.Title
 		if title == "" {
-			title = "(untitled)"
+			title = untitledTitle
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\n",
 			audio.ProjectID,
@@ -2236,7 +2244,7 @@ func listVideoOverviews(c *api.Client, notebookID string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "VIDEO_ID\tTITLE\tSTATUS")
+	_, _ = fmt.Fprintln(w, "VIDEO_ID\tTITLE\tSTATUS")
 	for _, video := range videoOverviews {
 		status := "pending"
 		if video.IsReady {
@@ -2244,7 +2252,7 @@ func listVideoOverviews(c *api.Client, notebookID string) error {
 		}
 		title := video.Title
 		if title == "" {
-			title = "(untitled)"
+			title = untitledTitle
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\n",
 			video.VideoID,
