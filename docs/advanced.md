@@ -22,21 +22,16 @@ Complete list of environment variables:
 # Authentication
 export NLM_AUTH_TOKEN="your-token"           # Auth token from browser
 export NLM_COOKIES="cookie-string"           # Session cookies
-export NLM_SAPISID="sapisid-value"          # SAPISID for refresh
 export NLM_BROWSER_PROFILE="Profile Name"    # Default browser profile
 
 # Behavior
-export NLM_AUTO_REFRESH="true"              # Auto-refresh tokens (default: true)
-export NLM_DEBUG="true"                     # Enable debug output
-export NLM_TIMEOUT="30"                     # Request timeout in seconds
-export NLM_RETRY_COUNT="3"                  # Number of retries for failed requests
-export NLM_RETRY_DELAY="1"                  # Initial retry delay in seconds
+export NLM_AUTO_REFRESH="true"               # Auto-refresh tokens (default: true)
+export NLM_DEBUG="true"                      # Enable debug output
+export NLM_USE_ORIGINAL_PROFILE="1"          # Use the original browser profile directory
 
-# Paths
-export NLM_CONFIG_DIR="$HOME/.nlm"          # Config directory
-export NLM_CACHE_DIR="$HOME/.nlm/cache"     # Cache directory
-export NLM_BROWSER_PATH="/path/to/browser"  # Custom browser path
-export NLM_PROFILE_PATH="/path/to/profile"  # Custom profile path
+# Advanced overrides
+export NLM_BUILD_VERSION="boq_labs-tailwind-frontend_..." # Override build version
+export NLM_SESSION_ID="-1234567890"                     # Override session ID
 ```
 
 ### Configuration Files
@@ -48,28 +43,6 @@ NLM_AUTH_TOKEN="token"
 NLM_COOKIES="cookies"
 NLM_BROWSER_PROFILE="Default"
 NLM_AUTO_REFRESH="true"
-```
-
-#### ~/.nlm/config.yaml (future)
-Advanced configuration:
-```yaml
-auth:
-  auto_refresh: true
-  refresh_advance: 300  # seconds before expiry
-  
-network:
-  timeout: 30
-  retry_count: 3
-  retry_delay: 1
-  max_retry_delay: 10
-  
-browser:
-  default: chrome
-  profiles:
-    - name: Work
-      path: ~/profiles/work
-    - name: Personal
-      path: ~/profiles/personal
 ```
 
 ### Multiple Configurations
@@ -102,7 +75,7 @@ ln -s "$CONFIG_BASE/$CONFIG_NAME" "$HOME/.nlm"
 echo "Switched to: $CONFIG_NAME"
 
 # Verify
-nlm auth --check
+nlm auth --notebooks
 ```
 
 ## Scripting & Automation
@@ -1089,10 +1062,8 @@ func TestCustomCommand(t *testing.T) {
 Enable verbose debugging:
 
 ```bash
-# Maximum debug output
+# Debug output
 export NLM_DEBUG=true
-export NLM_VERBOSE=true
-export NLM_LOG_LEVEL=trace
 
 # Run with strace (Linux)
 strace -e trace=network nlm list
@@ -1100,15 +1071,11 @@ strace -e trace=network nlm list
 # Run with dtruss (macOS)
 sudo dtruss -f nlm list
 
-# Profile performance
-go build -o nlm.prof -cpuprofile=cpu.prof ./cmd/nlm
-./nlm.prof list
-go tool pprof cpu.prof
 ```
 
 ## Next Steps
 
-- [Review command reference](commands.md)
-- [See practical examples](examples.md)
-- [Troubleshoot issues](troubleshooting.md)
-- [Contribute on GitHub](https://github.com/tmc/nlm)
+- [Usage and commands](../README.md)
+- [Testing guide](testing.md)
+- [WSL notes](wsl.md)
+- [Troubleshooting](troubleshooting.md)

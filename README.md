@@ -10,6 +10,19 @@
 go install github.com/tmc/nlm/cmd/nlm@latest
 ```
 
+### Nix (flakes)
+
+```bash
+# Run without installing
+nix run .# -- --help
+
+# Install to your profile
+nix profile install .#nlm
+
+# Dev shell
+nix develop
+```
+
 ### Usage 
 
 ```shell
@@ -49,6 +62,11 @@ Generation Commands:
 Other Commands:
   auth              Setup authentication
   batch <commands>  Execute multiple commands in batch
+```
+
+For the full command list and flags, run:
+```bash
+nlm help
 ```
 
 <details>
@@ -123,6 +141,7 @@ The tool supports multiple browsers:
 - **Brave Browser**
 - **Chromium**
 - **Microsoft Edge**
+- **Safari** (macOS)
 
 ### Brave Browser Authentication
 
@@ -307,7 +326,7 @@ These are typically managed by the `auth` command, but can be manually configure
 
 ## Troubleshooting 🔧
 
-If you encounter issues with authentication, API errors, or file uploads, please see the [Troubleshooting Guide](TROUBLESHOOTING.md) for detailed solutions to common problems.
+If you encounter issues with authentication, API errors, or file uploads, please see the [Troubleshooting Guide](docs/troubleshooting.md) for common fixes.
 
 ## Recent Improvements 🚀
 

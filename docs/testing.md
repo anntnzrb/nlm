@@ -15,7 +15,7 @@ The nlm project uses a multi-layered testing approach that combines:
 
 Scripttest tests are the primary tool for testing CLI behavior and user-facing functionality. They run the compiled binary directly and verify command-line argument parsing, help text, and error handling.
 
-**Location**: `/Users/tmc/go/src/github.com/tmc/nlm/cmd/nlm/testdata/`
+**Location**: `cmd/nlm/testdata/`
 
 **What scripttest tests excel at**:
 - Command-line argument validation
@@ -36,15 +36,15 @@ Scripttest tests are the primary tool for testing CLI behavior and user-facing f
 Unit tests focus on testing individual functions and components in isolation.
 
 **Examples**:
-- `/Users/tmc/go/src/github.com/tmc/nlm/cmd/nlm/main_test.go` - CLI framework testing
-- `/Users/tmc/go/src/github.com/tmc/nlm/cmd/nlm/integration_test.go` - Command routing logic
-- `/Users/tmc/go/src/github.com/tmc/nlm/internal/*/***_test.go` - Internal package testing
+- `cmd/nlm/main_test.go` - CLI framework testing
+- `cmd/nlm/integration_test.go` - Command routing logic
+- `internal/*/*_test.go` - Internal package testing
 
 ### 3. Integration Tests
 
 Integration tests verify complete workflows with mocked or real external dependencies.
 
-**Example**: `/Users/tmc/go/src/github.com/tmc/nlm/internal/batchexecute/integration_test.go`
+**Example**: `internal/batchexecute/integration_test.go`
 
 ## TDD Workflow: The Sources Command Pattern
 
@@ -322,6 +322,12 @@ func TestErrorHandlingIntegration(t *testing.T) {
 ### All Tests
 ```bash
 go test ./...
+```
+
+### With Nix Dev Shell
+```bash
+nix develop --command go test ./...
+nix develop --command golangci-lint run
 ```
 
 ### Scripttest Only
