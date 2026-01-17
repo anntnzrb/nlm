@@ -10,6 +10,8 @@ import (
 	"github.com/tmc/nlm/internal/beprotojson"
 )
 
+const defaultProjectEmoji = "📄"
+
 // ChunkedResponseParser is a specialized parser for NotebookLM's chunked response format
 // which parses the special format used for the ListRecentlyViewedProjects response
 type ChunkedResponseParser struct {
@@ -199,10 +201,10 @@ func (p *ChunkedResponseParser) parseStandardJSON() ([]*pb.Project, error) {
 			if emoji, ok := projectArray[3].(string); ok {
 				project.Emoji = emoji
 			} else {
-				project.Emoji = "📄" // Default emoji
+				project.Emoji = defaultProjectEmoji
 			}
 		} else {
-			project.Emoji = "📄" // Default emoji
+			project.Emoji = defaultProjectEmoji
 		}
 
 		// Add to results if we have an ID and title

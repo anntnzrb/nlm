@@ -26,6 +26,12 @@ import (
 type Notebook = pb.Project
 type Note = pb.Source
 
+const (
+	contentTypeJSON = "application/json"
+	envTrue         = "true"
+	statusCreating  = "CREATING"
+)
+
 // Client handles NotebookLM API interactions.
 type Client struct {
 	rpc                  *rpc.Client
@@ -46,7 +52,7 @@ func New(authToken, cookies string, opts ...batchexecute.Option) *Client {
 	}
 
 	// Add debug option if needed
-	if os.Getenv("NLM_DEBUG") == "true" {
+	if os.Getenv("NLM_DEBUG") == envTrue {
 		opts = append(opts, batchexecute.WithDebug(true))
 	}
 
@@ -59,7 +65,7 @@ func New(authToken, cookies string, opts ...batchexecute.Option) *Client {
 	}
 
 	// Get debug setting from environment for consistency
-	client.config.Debug = os.Getenv("NLM_DEBUG") == "true"
+	client.config.Debug = os.Getenv("NLM_DEBUG") == envTrue
 
 	return client
 }
@@ -259,7 +265,7 @@ func detectMIMEType(content []byte, filename string, providedType string) string
 	if bytes.HasPrefix(bytes.TrimSpace(content), []byte("{")) ||
 		bytes.HasPrefix(bytes.TrimSpace(content), []byte("[")) {
 		// This looks like JSON content
-		return "application/json"
+		return contentTypeJSON
 	}
 
 	if detectedType != "application/octet-stream" && !strings.HasPrefix(detectedType, "text/plain") {
@@ -300,10 +306,10 @@ func (c *Client) AddSourceFromReader(projectID string, r io.Reader, filename str
 
 	// Treat plain text or JSON content as text source
 	if strings.HasPrefix(detectedType, "text/") ||
-		detectedType == "application/json" ||
+		detectedType == contentTypeJSON ||
 		strings.HasSuffix(filename, ".json") {
 		// Add debug output about JSON handling for any environment
-		if strings.HasSuffix(filename, ".json") || detectedType == "application/json" {
+		if strings.HasSuffix(filename, ".json") || detectedType == contentTypeJSON {
 			fmt.Fprintf(os.Stderr, "Handling JSON file as text: %s (MIME: %s)\n", filename, detectedType)
 		}
 		return c.AddSourceFromText(projectID, string(content), filename)
@@ -392,7 +398,9 @@ func (c *Client) AddSourceFromFile(projectID string, filepath string, contentTyp
 	if err != nil {
 		return "", fmt.Errorf("open file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	var providedType string
 	if len(contentType) > 0 {
@@ -607,7 +615,9 @@ func (c *Client) initializeResumableUpload(projectID, filename, sourceID string,
 	if err != nil {
 		return "", fmt.Errorf("execute init request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -643,7 +653,9 @@ func (c *Client) uploadFileContent(uploadURL string, content []byte) error {
 	if err != nil {
 		return fmt.Errorf("execute upload request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -753,7 +765,7 @@ func (c *Client) CreateAudioOverview(projectID string, instructions string) (*Au
 		AudioID:   "",                                 // Not available in pb.AudioOverview
 		Title:     "",                                 // Not available in pb.AudioOverview
 		AudioData: audioOverview.Content,              // Map Content to AudioData
-		IsReady:   audioOverview.Status != "CREATING", // Infer from Status
+		IsReady:   audioOverview.Status != statusCreating, // Infer from Status
 	}
 	return result, nil
 }
@@ -842,7 +854,7 @@ func (c *Client) GetAudioOverview(projectID string) (*AudioOverviewResult, error
 		AudioID:   "",                                 // Not available in pb.AudioOverview
 		Title:     "",                                 // Not available in pb.AudioOverview
 		AudioData: audioOverview.Content,              // Map Content to AudioData
-		IsReady:   audioOverview.Status != "CREATING", // Infer from Status
+		IsReady:   audioOverview.Status != statusCreating, // Infer from Status
 	}
 	return result, nil
 }
@@ -883,7 +895,7 @@ func (c *Client) getAudioOverviewDirectRPCWithType(projectID string, requestType
 			// Check status
 			if len(audioData) > 0 {
 				if status, ok := audioData[0].(string); ok {
-					result.IsReady = status != "CREATING"
+					result.IsReady = status != statusCreating
 				}
 			}
 			// Get audio content
@@ -1248,7 +1260,7 @@ func (c *Client) tryVideoOverviewDirectRPC(projectID string) (*VideoOverviewResu
 			}
 			if len(videoData) > 2 {
 				if status, ok := videoData[2].(string); ok {
-					result.IsReady = status != "CREATING"
+					result.IsReady = status != statusCreating
 				}
 			}
 		}
@@ -1557,7 +1569,9 @@ func (r *VideoOverviewResult) downloadVideoFromURL(url, filename string) error {
 	if err != nil {
 		return fmt.Errorf("download video from URL: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed with status: %s (may need authentication cookies)", resp.Status)
@@ -1567,7 +1581,9 @@ func (r *VideoOverviewResult) downloadVideoFromURL(url, filename string) error {
 	if err != nil {
 		return fmt.Errorf("create video file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
@@ -1641,7 +1657,9 @@ func (c *Client) DownloadVideoWithAuth(videoURL, filename string) error {
 	if err != nil {
 		return fmt.Errorf("download video: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		return fmt.Errorf("download failed with status: %s (check authentication)", resp.Status)
@@ -1652,7 +1670,9 @@ func (c *Client) DownloadVideoWithAuth(videoURL, filename string) error {
 	if err != nil {
 		return fmt.Errorf("create video file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	// Copy with progress if debug enabled
 	if c.config.Debug {
@@ -1895,7 +1915,7 @@ func (c *Client) StartSection(projectID string) (*pb.StartSectionResponse, error
 
 func (c *Client) GenerateFreeFormStreamed(projectID string, prompt string, sourceIDs []string) (*pb.GenerateFreeFormStreamedResponse, error) {
 	// Check if we should skip sources (useful for testing or when project is inaccessible)
-	skipSources := os.Getenv("NLM_SKIP_SOURCES") == "true"
+skipSources := os.Getenv("NLM_SKIP_SOURCES") == envTrue
 
 	// If no source IDs provided and not skipping, try to get all sources from the project
 	if len(sourceIDs) == 0 && !skipSources {
@@ -1944,7 +1964,7 @@ func (c *Client) GenerateFreeFormStreamed(projectID string, prompt string, sourc
 // GenerateFreeFormStreamedWithCallback streams the response and calls the callback for each chunk
 func (c *Client) GenerateFreeFormStreamedWithCallback(projectID string, prompt string, sourceIDs []string, callback func(chunk string) bool) error {
 	// Check if we should skip sources (useful for testing or when project is inaccessible)
-	skipSources := os.Getenv("NLM_SKIP_SOURCES") == "true"
+skipSources := os.Getenv("NLM_SKIP_SOURCES") == envTrue
 
 	// If no source IDs provided and not skipping, try to get all sources from the project
 	if len(sourceIDs) == 0 && !skipSources {

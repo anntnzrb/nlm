@@ -38,24 +38,26 @@ func TestHTTPRecorder(t *testing.T) {
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
-		defer reqFile.Close()
+		defer func() {
+			_ = reqFile.Close()
+		}()
 
 		// Write request details
-		fmt.Fprintf(reqFile, "Method: %s\n", r.Method)
-		fmt.Fprintf(reqFile, "URL: %s\n", r.URL.String())
-		fmt.Fprintf(reqFile, "Headers:\n")
+		_, _ = fmt.Fprintf(reqFile, "Method: %s\n", r.Method)
+		_, _ = fmt.Fprintf(reqFile, "URL: %s\n", r.URL.String())
+		_, _ = fmt.Fprintf(reqFile, "Headers:\n")
 		for k, v := range r.Header {
-			fmt.Fprintf(reqFile, "  %s: %v\n", k, v)
+			_, _ = fmt.Fprintf(reqFile, "  %s: %v\n", k, v)
 		}
 
 		// Record request body if present
 		if r.Body != nil {
-			fmt.Fprintf(reqFile, "\nBody:\n")
+			_, _ = fmt.Fprintf(reqFile, "\nBody:\n")
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Logf("Failed to read request body: %v", err)
 			} else {
-				fmt.Fprintf(reqFile, "%s\n", string(body))
+				_, _ = fmt.Fprintf(reqFile, "%s\n", string(body))
 				// Restore body for forwarding
 				r.Body = io.NopCloser(bytes.NewReader(body))
 			}
@@ -69,7 +71,9 @@ func TestHTTPRecorder(t *testing.T) {
 			http.Error(w, "Failed to connect to server", http.StatusBadGateway)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 
 		// Record the response
 		respFilename := filepath.Join(recordDir, fmt.Sprintf("%s-response.txt", timestamp))
@@ -79,21 +83,23 @@ func TestHTTPRecorder(t *testing.T) {
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
-		defer respFile.Close()
+		defer func() {
+			_ = respFile.Close()
+		}()
 
 		// Write response details
-		fmt.Fprintf(respFile, "Status: %s\n", resp.Status)
-		fmt.Fprintf(respFile, "Headers:\n")
+		_, _ = fmt.Fprintf(respFile, "Status: %s\n", resp.Status)
+		_, _ = fmt.Fprintf(respFile, "Headers:\n")
 		for k, v := range resp.Header {
-			fmt.Fprintf(respFile, "  %s: %v\n", k, v)
+			_, _ = fmt.Fprintf(respFile, "  %s: %v\n", k, v)
 		}
 
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Logf("Failed to read response body: %v", err)
 		} else {
-			fmt.Fprintf(respFile, "\nBody:\n")
-			fmt.Fprintf(respFile, "%s\n", string(respBody))
+			_, _ = fmt.Fprintf(respFile, "\nBody:\n")
+			_, _ = fmt.Fprintf(respFile, "%s\n", string(respBody))
 		}
 
 		// Write response to client
@@ -101,13 +107,19 @@ func TestHTTPRecorder(t *testing.T) {
 			w.Header()[k] = v
 		}
 		w.WriteHeader(resp.StatusCode)
-		w.Write(respBody)
+		if _, err := w.Write(respBody); err != nil {
+			t.Logf("Failed to write response body: %v", err)
+		}
 	}))
 	defer proxy.Close()
 
 	// Set environment variables to use our proxy
-	os.Setenv("HTTP_PROXY", proxy.URL)
-	os.Setenv("HTTPS_PROXY", proxy.URL)
+	if err := os.Setenv("HTTP_PROXY", proxy.URL); err != nil {
+		t.Fatalf("Failed to set HTTP_PROXY: %v", err)
+	}
+	if err := os.Setenv("HTTPS_PROXY", proxy.URL); err != nil {
+		t.Fatalf("Failed to set HTTPS_PROXY: %v", err)
+	}
 	t.Logf("Proxy server started at: %s", proxy.URL)
 
 	// The actual implementation has been moved to test_helpers.go
